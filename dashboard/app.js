@@ -13,8 +13,11 @@
     hello: null,
     telemetry: null,
     lastAck: null,
+    lastVoiceIntent: null,
     logs: [],
   };
+
+  const voiceIntentApi = window.SmartLifeVoiceIntent;
 
   const el = {
     serialStatus: document.querySelector("#serialStatus"),
@@ -33,6 +36,11 @@
     thresholdForm: document.querySelector("#thresholdForm"),
     eventLog: document.querySelector("#eventLog"),
     clearLogButton: document.querySelector("#clearLogButton"),
+    voiceStatus: document.querySelector("#voiceStatus"),
+    voiceQuickGrid: document.querySelector("#voiceQuickGrid"),
+    voiceForm: document.querySelector("#voiceForm"),
+    voiceTextInput: document.querySelector("#voiceTextInput"),
+    voiceResult: document.querySelector("#voiceResult"),
     studyRoomState: document.querySelector("#studyRoomState"),
     livingRoomState: document.querySelector("#livingRoomState"),
     entryRoomState: document.querySelector("#entryRoomState"),
@@ -118,6 +126,12 @@
     el.thresholdForm.querySelectorAll("button, input").forEach((control) => {
       control.disabled = !state.connected;
     });
+    el.voiceForm.querySelectorAll("button, input").forEach((control) => {
+      control.disabled = !state.connected;
+    });
+    el.voiceQuickGrid.querySelectorAll("button").forEach((button) => {
+      button.disabled = !state.connected;
+    });
   }
 
   function renderStatus() {
@@ -186,11 +200,28 @@
     el.ackStatus.dataset.status = state.lastAck.ok ? "ok" : "offline";
   }
 
+  function renderVoiceIntent() {
+    const lastVoiceIntent = state.lastVoiceIntent;
+    if (!lastVoiceIntent) {
+      el.voiceStatus.textContent = "文本模式";
+      el.voiceStatus.dataset.status = "idle";
+      el.voiceResult.textContent = "等待语音文字";
+      return;
+    }
+
+    el.voiceStatus.textContent = lastVoiceIntent.ok ? lastVoiceIntent.intent : "unknown";
+    el.voiceStatus.dataset.status = lastVoiceIntent.ok ? "ok" : "offline";
+    el.voiceResult.textContent = lastVoiceIntent.ok
+      ? `${lastVoiceIntent.label}: ${lastVoiceIntent.text}`
+      : `${lastVoiceIntent.message}: ${lastVoiceIntent.text || ""}`;
+  }
+
   function render() {
     renderStatus();
     renderHello();
     renderTelemetry();
     renderAck();
+    renderVoiceIntent();
   }
 
   function handleFrame(frame) {
@@ -321,6 +352,45 @@
     }
   }
 
+  async function submitVoiceText(text) {
+    if (!voiceIntentApi) {
+      addLog("error", "语音意图模块未加载");
+      return;
+    }
+
+    const result = voiceIntentApi.resolveVoiceIntent(text);
+    state.lastVoiceIntent = result;
+    render();
+
+    if (!result.ok) {
+      addLog("error", `语音未发送: ${result.message}`);
+      return;
+    }
+
+    addLog("command", `语音意图 ${result.intent}: ${result.label}`);
+    await sendCommand(result.command);
+  }
+
+  function renderVoiceQuickButtons() {
+    if (!voiceIntentApi) {
+      el.voiceQuickGrid.textContent = "语音意图模块未加载";
+      return;
+    }
+
+    el.voiceQuickGrid.innerHTML = "";
+    voiceIntentApi.quickIntents.forEach((item) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = item.label;
+      button.dataset.voiceText = item.text;
+      button.addEventListener("click", () => {
+        el.voiceTextInput.value = item.text;
+        submitVoiceText(item.text);
+      });
+      el.voiceQuickGrid.appendChild(button);
+    });
+  }
+
   function bindEvents() {
     el.connectButton.addEventListener("click", connectSerial);
     el.disconnectButton.addEventListener("click", () => disconnectSerial(true));
@@ -346,12 +416,18 @@
       sendCommand({ type: "command", set });
     });
 
+    el.voiceForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitVoiceText(el.voiceTextInput.value);
+    });
+
     navigator.serial?.addEventListener("disconnect", () => {
       addLog("error", "USB 设备已断开");
       disconnectSerial(false);
     });
   }
 
+  renderVoiceQuickButtons();
   bindEvents();
   renderLog();
   render();

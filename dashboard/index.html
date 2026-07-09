@@ -116,6 +116,28 @@
         </form>
       </section>
 
+      <section class="panel voice-panel" aria-labelledby="voiceTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">voice intent</p>
+            <h2 id="voiceTitle">语音意图</h2>
+          </div>
+          <span class="small-tag" id="voiceStatus">文本模式</span>
+        </div>
+
+        <div class="voice-quick-grid" id="voiceQuickGrid" aria-label="语音快捷意图"></div>
+
+        <form class="voice-form" id="voiceForm">
+          <label>
+            语音文字
+            <input id="voiceTextInput" name="voiceText" type="text" value="开始学习" autocomplete="off" />
+          </label>
+          <button class="primary-action" type="submit">发送意图</button>
+        </form>
+
+        <div class="voice-result" id="voiceResult">等待语音文字</div>
+      </section>
+
       <section class="panel sensor-panel" aria-labelledby="sensorTitle">
         <div class="panel-head">
           <div>
@@ -204,6 +226,7 @@
       </section>
     </main>
 
-    <script src="./app.js?v=20260709-dashboard-min"></script>
+    <script src="./intent-core.js?v=20260709-voice-intent"></script>
+    <script src="./app.js?v=20260709-voice-intent"></script>
   </body>
 </html>
