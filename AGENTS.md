@@ -22,6 +22,21 @@
 
 如果图片局部小字和 `开发文档.md` 表格不一致，以 `开发文档.md` 和实板丝印复核为准。
 
+## GitHub 同步规则
+
+远端仓库：`https://github.com/lostmyukii/zhihuishenghuohkxiao1.git`
+
+用户要求“每一步更新 GitHub”。后续 agent 必须按小步提交工作：
+
+1. 每次只完成一个可验证改动，例如更新 `AGENTS.md`、更新 `开发文档.md`、新增固件最小版、修改 Dashboard 一个功能。
+2. 改动后先运行该步骤能运行的最小检查；文档阶段至少检查文件存在、图片路径、关键术语。
+3. 只暂存本步骤相关文件，不用 `git add -A` 混入隐藏配置或无关草稿。
+4. 使用清楚的提交信息，例如 `docs: add github sync workflow`、`docs: clarify implementation checkpoints`。
+5. 每个提交完成后立即 `git push` 到当前跟踪分支。
+6. 如果 push 失败，先记录失败原因，不继续堆叠下一步改动。
+
+禁止提交 API key、MQTT 密码、Wi-Fi 密码、个人聊天记录和与作品无关的本机配置。
+
 ## 硬件合同
 
 当前小学 N16R8 合同如下，除非用户明确改硬件，不要改：
