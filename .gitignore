@@ -1,0 +1,10 @@
+.DS_Store
+.pio/
+.vscode/
+.baoyu-skills/
+*.log
+*.tmp
+*.bak
+.env
+.env.*
+secrets.*
