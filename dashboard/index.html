@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>N16R8 智慧低碳学习小屋</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">smartlife-primary-study-home-v1</p>
+        <h1>N16R8 智慧低碳学习小屋</h1>
+      </div>
+      <div class="status-row" aria-label="连接状态">
+        <span class="status-pill" id="serialStatus">串口未连接</span>
+        <span class="status-pill" id="boardStatus">开发板离线</span>
+        <span class="status-pill" id="frameStatus">0 帧</span>
+      </div>
+    </header>
+
+    <main class="console-grid">
+      <section class="panel connection-panel" aria-labelledby="connectionTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">USB direct</p>
+            <h2 id="connectionTitle">串口连接</h2>
+          </div>
+          <span class="small-tag" id="baudRate">115200</span>
+        </div>
+
+        <div class="button-row">
+          <button class="primary-action" id="connectButton" type="button">连接 N16R8</button>
+          <button class="secondary-action" id="disconnectButton" type="button" disabled>断开</button>
+        </div>
+
+        <dl class="mini-list">
+          <div>
+            <dt>设备</dt>
+            <dd id="deviceName">等待 hello</dd>
+          </div>
+          <div>
+            <dt>固件</dt>
+            <dd id="firmwareVersion">等待 hello</dd>
+          </div>
+          <div>
+            <dt>最近帧</dt>
+            <dd id="lastFrameAt">无</dd>
+          </div>
+        </dl>
+
+        <div class="notice" id="supportNotice">
+          Chrome 或 Edge 在 HTTPS/localhost 页面中可使用 Web Serial。
+        </div>
+      </section>
+
+      <section class="panel house-panel" aria-labelledby="houseTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">live house</p>
+            <h2 id="houseTitle">学习小屋总览</h2>
+          </div>
+          <span class="mode-chip" id="modeChip">等待模式</span>
+        </div>
+
+        <div class="house-map">
+          <div class="room room-study">
+            <span>学习房</span>
+            <strong id="studyRoomState">等待数据</strong>
+          </div>
+          <div class="room room-living">
+            <span>客厅中控</span>
+            <strong id="livingRoomState">等待数据</strong>
+          </div>
+          <div class="room room-entry">
+            <span>玄关</span>
+            <strong id="entryRoomState">等待数据</strong>
+          </div>
+        </div>
+
+        <div class="wiring-preview">
+          <img src="../assets/wiring/n16r8-primary-wiring.png" alt="N16R8 小学组硬件连接示意图" />
+        </div>
+      </section>
+
+      <section class="panel controls-panel" aria-labelledby="controlsTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">scene control</p>
+            <h2 id="controlsTitle">模式控制</h2>
+          </div>
+          <span class="small-tag" id="ackStatus">等待 ack</span>
+        </div>
+
+        <div class="mode-grid" aria-label="模式按钮">
+          <button type="button" data-mode="study">学习</button>
+          <button type="button" data-mode="rest">休息</button>
+          <button type="button" data-mode="away">离家</button>
+          <button type="button" data-mode="energy">节能</button>
+        </div>
+
+        <form class="threshold-form" id="thresholdForm">
+          <label>
+            光照阈值
+            <input name="lightThreshold" type="number" min="0" max="100" value="35" />
+          </label>
+          <label>
+            温度阈值
+            <input name="temperatureThreshold" type="number" min="10" max="40" value="29" />
+          </label>
+          <label>
+            噪声阈值
+            <input name="soundThreshold" type="number" min="0" max="100" value="65" />
+          </label>
+          <button class="secondary-action" type="submit">更新阈值</button>
+        </form>
+      </section>
+
+      <section class="panel sensor-panel" aria-labelledby="sensorTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">sensor frames</p>
+            <h2 id="sensorTitle">传感器</h2>
+          </div>
+          <span class="small-tag" id="thresholdFocus">lightThreshold</span>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric">
+            <span>光照</span>
+            <strong id="lightValue">等待</strong>
+            <small>ADC1 / GPIO1</small>
+          </article>
+          <article class="metric">
+            <span>温度</span>
+            <strong id="temperatureValue">等待</strong>
+            <small>D14 / GPIO14</small>
+          </article>
+          <article class="metric">
+            <span>湿度</span>
+            <strong id="humidityValue">等待</strong>
+            <small>DHT11</small>
+          </article>
+          <article class="metric">
+            <span>噪声</span>
+            <strong id="soundValue">等待</strong>
+            <small>ADC4 / GPIO4</small>
+          </article>
+          <article class="metric">
+            <span>人体</span>
+            <strong id="pirValue">等待</strong>
+            <small>D5 / GPIO5</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel actuator-panel" aria-labelledby="actuatorTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">actuator states</p>
+            <h2 id="actuatorTitle">执行器</h2>
+          </div>
+          <span class="small-tag">真实 telemetry</span>
+        </div>
+
+        <div class="metric-grid actuator-grid">
+          <article class="metric">
+            <span>学习灯</span>
+            <strong id="lampValue">等待</strong>
+            <small>GPIO48</small>
+          </article>
+          <article class="metric">
+            <span>风扇</span>
+            <strong id="fanValue">等待</strong>
+            <small>D11 / GPIO11</small>
+          </article>
+          <article class="metric">
+            <span>窗帘</span>
+            <strong id="curtainValue">等待</strong>
+            <small>D9 / GPIO9</small>
+          </article>
+          <article class="metric">
+            <span>状态灯</span>
+            <strong id="rgbValue">等待</strong>
+            <small>GPIO47</small>
+          </article>
+          <article class="metric">
+            <span>蜂鸣器</span>
+            <strong id="buzzerValue">等待</strong>
+            <small>D13 / GPIO13</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel event-panel" aria-labelledby="eventTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">serial log</p>
+            <h2 id="eventTitle">事件记录</h2>
+          </div>
+          <button class="secondary-action compact" id="clearLogButton" type="button">清空</button>
+        </div>
+        <ol class="event-log" id="eventLog"></ol>
+      </section>
+    </main>
+
+    <script src="./app.js?v=20260709-dashboard-min"></script>
+  </body>
+</html>
