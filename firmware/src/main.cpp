@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <Wire.h>
 
 #if __has_include(<esp_arduino_version.h>)
 #include <esp_arduino_version.h>
@@ -95,6 +96,7 @@ constexpr const char *PROFILE_ID = "smartlife-primary-study-home-v1";
 constexpr const char *FIRMWARE_VERSION = "0.1.0";
 constexpr unsigned long TELEMETRY_INTERVAL_MS = 1000;
 constexpr unsigned long SENSOR_INTERVAL_MS = 200;
+constexpr unsigned long OLED_INTERVAL_MS = 500;
 constexpr unsigned long MANUAL_OVERRIDE_MS = 10000;
 
 Sensors sensors;
@@ -107,7 +109,11 @@ unsigned long lastTelemetryAt = 0;
 unsigned long lastSensorAt = 0;
 unsigned long manualOverrideUntil = 0;
 const char *lastKey = "NONE";
+const char *lastKeyEvent = "NONE";
 unsigned long lastKeyAt = 0;
+unsigned long lastKeyEventAt = 0;
+unsigned long lastOledAt = 0;
+bool oledReady = false;
 
 int clampInt(int value, int minValue, int maxValue) {
   if (value < minValue) return minValue;
@@ -141,6 +147,68 @@ const char *focusName(ThresholdFocus focus) {
       return "awayDelaySeconds";
   }
   return "lightThreshold";
+}
+
+const char *modeDisplayName(Mode mode) {
+  switch (mode) {
+    case Mode::STUDY:
+      return "STUDY";
+    case Mode::REST:
+      return "REST";
+    case Mode::AWAY:
+      return "AWAY";
+    case Mode::ENERGY:
+      return "ENERGY";
+  }
+  return "STUDY";
+}
+
+const char *focusShortName(ThresholdFocus focus) {
+  switch (focus) {
+    case ThresholdFocus::LIGHT:
+      return "LIGHT";
+    case ThresholdFocus::TEMPERATURE:
+      return "TEMP";
+    case ThresholdFocus::SOUND:
+      return "SOUND";
+    case ThresholdFocus::AWAY_DELAY:
+      return "AWAY";
+  }
+  return "LIGHT";
+}
+
+String focusedThresholdValue() {
+  switch (thresholdFocus) {
+    case ThresholdFocus::LIGHT:
+      return String(thresholds.light);
+    case ThresholdFocus::TEMPERATURE:
+      return String(static_cast<int>(thresholds.temperature + 0.5f));
+    case ThresholdFocus::SOUND:
+      return String(thresholds.sound);
+    case ThresholdFocus::AWAY_DELAY:
+      return String(thresholds.awayDelaySeconds);
+  }
+  return String(thresholds.light);
+}
+
+String displayLine(uint8_t index) {
+  switch (index) {
+    case 0:
+      return "N16R8 PRIMARY";
+    case 1:
+      return String("MODE:") + modeDisplayName(currentMode);
+    case 2:
+      return String("FOCUS:") + focusShortName(thresholdFocus) + " " + focusedThresholdValue();
+    case 3:
+      return String("L:") + sensors.light + " T:" +
+             (sensors.dhtValid ? String(static_cast<int>(sensors.temperature + 0.5f)) : "--") + " S:" +
+             sensors.sound;
+    case 4:
+      return String("KEY:") + lastKeyEvent + " RAW:" + sensors.keypadRaw;
+    case 5:
+      return String("PIR:") + (sensors.pir ? "ON" : "OFF") + " FAN:" + actuators.fan;
+  }
+  return "";
 }
 
 void attachPwm(uint8_t pin, uint8_t channel, uint32_t freq, uint8_t resolution) {
@@ -259,6 +327,172 @@ int percentFromAnalog(int raw) {
   return clampInt(map(raw, 0, 4095, 0, 100), 0, 100);
 }
 
+namespace Oled {
+constexpr uint8_t ADDRESS = 0x3C;
+constexpr uint8_t WIDTH = 128;
+constexpr uint8_t PAGES = 8;
+constexpr uint8_t TEXT_LINES = 6;
+constexpr uint8_t CHARS_PER_LINE = 21;
+constexpr uint8_t DATA_CHUNK = 16;
+}  // namespace Oled
+
+const uint8_t OLED_FONT_DIGITS[10][5] = {
+    {0x3E, 0x51, 0x49, 0x45, 0x3E},
+    {0x00, 0x42, 0x7F, 0x40, 0x00},
+    {0x42, 0x61, 0x51, 0x49, 0x46},
+    {0x21, 0x41, 0x45, 0x4B, 0x31},
+    {0x18, 0x14, 0x12, 0x7F, 0x10},
+    {0x27, 0x45, 0x45, 0x45, 0x39},
+    {0x3C, 0x4A, 0x49, 0x49, 0x30},
+    {0x01, 0x71, 0x09, 0x05, 0x03},
+    {0x36, 0x49, 0x49, 0x49, 0x36},
+    {0x06, 0x49, 0x49, 0x29, 0x1E},
+};
+
+const uint8_t OLED_FONT_UPPER[26][5] = {
+    {0x7E, 0x11, 0x11, 0x11, 0x7E},
+    {0x7F, 0x49, 0x49, 0x49, 0x36},
+    {0x3E, 0x41, 0x41, 0x41, 0x22},
+    {0x7F, 0x41, 0x41, 0x22, 0x1C},
+    {0x7F, 0x49, 0x49, 0x49, 0x41},
+    {0x7F, 0x09, 0x09, 0x09, 0x01},
+    {0x3E, 0x41, 0x49, 0x49, 0x7A},
+    {0x7F, 0x08, 0x08, 0x08, 0x7F},
+    {0x00, 0x41, 0x7F, 0x41, 0x00},
+    {0x20, 0x40, 0x41, 0x3F, 0x01},
+    {0x7F, 0x08, 0x14, 0x22, 0x41},
+    {0x7F, 0x40, 0x40, 0x40, 0x40},
+    {0x7F, 0x02, 0x0C, 0x02, 0x7F},
+    {0x7F, 0x04, 0x08, 0x10, 0x7F},
+    {0x3E, 0x41, 0x41, 0x41, 0x3E},
+    {0x7F, 0x09, 0x09, 0x09, 0x06},
+    {0x3E, 0x41, 0x51, 0x21, 0x5E},
+    {0x7F, 0x09, 0x19, 0x29, 0x46},
+    {0x46, 0x49, 0x49, 0x49, 0x31},
+    {0x01, 0x01, 0x7F, 0x01, 0x01},
+    {0x3F, 0x40, 0x40, 0x40, 0x3F},
+    {0x1F, 0x20, 0x40, 0x20, 0x1F},
+    {0x7F, 0x20, 0x18, 0x20, 0x7F},
+    {0x63, 0x14, 0x08, 0x14, 0x63},
+    {0x03, 0x04, 0x78, 0x04, 0x03},
+    {0x61, 0x51, 0x49, 0x45, 0x43},
+};
+
+const uint8_t OLED_GLYPH_SPACE[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
+const uint8_t OLED_GLYPH_COLON[5] = {0x00, 0x36, 0x36, 0x00, 0x00};
+const uint8_t OLED_GLYPH_DASH[5] = {0x08, 0x08, 0x08, 0x08, 0x08};
+const uint8_t OLED_GLYPH_SLASH[5] = {0x20, 0x10, 0x08, 0x04, 0x02};
+const uint8_t OLED_GLYPH_DOT[5] = {0x00, 0x60, 0x60, 0x00, 0x00};
+const uint8_t OLED_GLYPH_QUESTION[5] = {0x02, 0x01, 0x51, 0x09, 0x06};
+
+const uint8_t *oledGlyphForChar(char value) {
+  if (value >= 'a' && value <= 'z') value = static_cast<char>(value - 32);
+  if (value >= '0' && value <= '9') return OLED_FONT_DIGITS[value - '0'];
+  if (value >= 'A' && value <= 'Z') return OLED_FONT_UPPER[value - 'A'];
+  if (value == ' ') return OLED_GLYPH_SPACE;
+  if (value == ':') return OLED_GLYPH_COLON;
+  if (value == '-') return OLED_GLYPH_DASH;
+  if (value == '/') return OLED_GLYPH_SLASH;
+  if (value == '.') return OLED_GLYPH_DOT;
+  return OLED_GLYPH_QUESTION;
+}
+
+bool oledWriteTransmission(uint8_t control, const uint8_t *data, size_t length) {
+  Wire.beginTransmission(Oled::ADDRESS);
+  Wire.write(control);
+  for (size_t index = 0; index < length; index++) {
+    Wire.write(data[index]);
+  }
+  return Wire.endTransmission() == 0;
+}
+
+bool oledCommand(uint8_t command) {
+  return oledWriteTransmission(0x00, &command, 1);
+}
+
+bool oledData(const uint8_t *data, size_t length) {
+  size_t offset = 0;
+  while (offset < length) {
+    size_t chunk = length - offset;
+    if (chunk > Oled::DATA_CHUNK) chunk = Oled::DATA_CHUNK;
+    if (!oledWriteTransmission(0x40, data + offset, chunk)) return false;
+    offset += chunk;
+  }
+  return true;
+}
+
+bool oledSetCursor(uint8_t page, uint8_t column) {
+  if (!oledCommand(static_cast<uint8_t>(0xB0 | (page & 0x07)))) return false;
+  if (!oledCommand(static_cast<uint8_t>(0x00 | (column & 0x0F)))) return false;
+  return oledCommand(static_cast<uint8_t>(0x10 | ((column >> 4) & 0x0F)));
+}
+
+void oledClear() {
+  if (!oledReady) return;
+  const uint8_t empty[Oled::DATA_CHUNK] = {0};
+  for (uint8_t page = 0; page < Oled::PAGES; page++) {
+    if (!oledSetCursor(page, 0)) {
+      oledReady = false;
+      return;
+    }
+    for (uint8_t column = 0; column < Oled::WIDTH; column += Oled::DATA_CHUNK) {
+      if (!oledData(empty, Oled::DATA_CHUNK)) {
+        oledReady = false;
+        return;
+      }
+    }
+  }
+}
+
+void oledBegin() {
+  Wire.begin(Pins::OLED_SDA, Pins::OLED_SCL);
+  Wire.setClock(400000);
+  delay(20);
+
+  Wire.beginTransmission(Oled::ADDRESS);
+  oledReady = Wire.endTransmission() == 0;
+  if (!oledReady) return;
+
+  const uint8_t initCommands[] = {
+      0xAE, 0x20, 0x00, 0xB0, 0xC8, 0x00, 0x10, 0x40, 0x81, 0x7F,
+      0xA1, 0xA6, 0xA8, 0x3F, 0xA4, 0xD3, 0x00, 0xD5, 0x80, 0xD9,
+      0xF1, 0xDA, 0x12, 0xDB, 0x40, 0x8D, 0x14, 0xAF,
+  };
+  for (uint8_t index = 0; index < sizeof(initCommands); index++) {
+    if (!oledCommand(initCommands[index])) {
+      oledReady = false;
+      return;
+    }
+  }
+  oledClear();
+}
+
+void oledWriteTextLine(uint8_t row, const String &text) {
+  if (!oledReady || row >= Oled::TEXT_LINES) return;
+  if (!oledSetCursor(row, 0)) {
+    oledReady = false;
+    return;
+  }
+
+  for (uint8_t index = 0; index < Oled::CHARS_PER_LINE; index++) {
+    char value = index < text.length() ? text.charAt(index) : ' ';
+    const uint8_t *glyph = oledGlyphForChar(value);
+    uint8_t columns[6] = {glyph[0], glyph[1], glyph[2], glyph[3], glyph[4], 0x00};
+    if (!oledData(columns, sizeof(columns))) {
+      oledReady = false;
+      return;
+    }
+  }
+}
+
+void oledRenderStatus() {
+  if (!oledReady) return;
+  for (uint8_t row = 0; row < Oled::TEXT_LINES; row++) {
+    oledWriteTextLine(row, displayLine(row));
+    if (!oledReady) return;
+  }
+}
+
 void readSensors() {
   sensors.lightRaw = analogRead(Pins::LIGHT);
   sensors.soundRaw = analogRead(Pins::SOUND);
@@ -333,6 +567,8 @@ void processKeypad() {
   }
   lastKey = key;
   lastKeyAt = now;
+  lastKeyEvent = key;
+  lastKeyEventAt = now;
 
   if (strcmp(key, "A") == 0) setMode(Mode::STUDY);
   if (strcmp(key, "B") == 0) setMode(Mode::REST);
@@ -402,6 +638,26 @@ bool parseBoolField(const String &line, const char *key, bool fallback) {
   return fallback;
 }
 
+bool applyThresholdFocusCommand(const String &line) {
+  if (line.indexOf("\"thresholdFocus\":\"lightThreshold\"") >= 0) {
+    thresholdFocus = ThresholdFocus::LIGHT;
+    return true;
+  }
+  if (line.indexOf("\"thresholdFocus\":\"temperatureThreshold\"") >= 0) {
+    thresholdFocus = ThresholdFocus::TEMPERATURE;
+    return true;
+  }
+  if (line.indexOf("\"thresholdFocus\":\"soundThreshold\"") >= 0) {
+    thresholdFocus = ThresholdFocus::SOUND;
+    return true;
+  }
+  if (line.indexOf("\"thresholdFocus\":\"awayDelaySeconds\"") >= 0) {
+    thresholdFocus = ThresholdFocus::AWAY_DELAY;
+    return true;
+  }
+  return false;
+}
+
 void emitAck(bool ok, const String &message) {
   Serial.print("{\"type\":\"ack\",\"ok\":");
   Serial.print(ok ? "true" : "false");
@@ -456,6 +712,16 @@ void processCommand(String line) {
     thresholds.sound = clampInt(parseIntAfter(line, "\"soundThreshold\":", thresholds.sound), 0, 100);
     handled = true;
     message = "set=soundThreshold";
+  }
+  if (line.indexOf("\"awayDelaySeconds\":") >= 0) {
+    thresholds.awayDelaySeconds = clampInt(
+        parseIntAfter(line, "\"awayDelaySeconds\":", thresholds.awayDelaySeconds), 0, 120);
+    handled = true;
+    message = "set=awayDelaySeconds";
+  }
+  if (applyThresholdFocusCommand(line)) {
+    handled = true;
+    message = "set=thresholdFocus";
   }
 
   if (line.indexOf("\"actuator\"") >= 0) {
@@ -557,6 +823,21 @@ const char *energyReason() {
   return "scene-rules-active";
 }
 
+void emitDisplayJson() {
+  Serial.print("\"display\":{\"lines\":[");
+  for (uint8_t index = 0; index < Oled::TEXT_LINES; index++) {
+    if (index > 0) Serial.print(",");
+    Serial.print("\"");
+    Serial.print(displayLine(index));
+    Serial.print("\"");
+  }
+  Serial.print("],\"lastKey\":\"");
+  Serial.print(lastKeyEvent);
+  Serial.print("\",\"focus\":\"");
+  Serial.print(focusName(thresholdFocus));
+  Serial.print("\"}");
+}
+
 void emitTelemetry() {
   Serial.print("{\"type\":\"telemetry\",\"ts\":");
   Serial.print(millis());
@@ -578,6 +859,9 @@ void emitTelemetry() {
   Serial.print(sensors.pir ? "true" : "false");
   Serial.print(",\"keypadRaw\":");
   Serial.print(sensors.keypadRaw);
+  Serial.print(",\"keypadKey\":\"");
+  Serial.print(lastKeyEvent);
+  Serial.print("\"");
   Serial.print("},\"actuators\":{\"lamp\":");
   Serial.print(actuators.lamp ? "true" : "false");
   Serial.print(",\"fan\":");
@@ -594,10 +878,18 @@ void emitTelemetry() {
   Serial.print(energyScore());
   Serial.print(",\"reason\":\"");
   Serial.print(energyReason());
-  Serial.print("\"},\"health\":{\"profileId\":\"");
+  Serial.print("\"},");
+  emitDisplayJson();
+  Serial.print(",\"health\":{\"profileId\":\"");
   Serial.print(PROFILE_ID);
   Serial.print("\",\"mqtt\":\"bridge\",\"voice\":\"ready\",\"thresholdFocus\":\"");
   Serial.print(focusName(thresholdFocus));
+  Serial.print("\",\"keypadLastKey\":\"");
+  Serial.print(lastKeyEvent);
+  Serial.print("\",\"keypadLastMs\":");
+  Serial.print(lastKeyEventAt);
+  Serial.print(",\"oled\":\"");
+  Serial.print(oledReady ? "ready" : "missing");
   Serial.print("\",\"dht\":\"");
   Serial.print(sensors.dhtValid ? "ok" : "missing");
   Serial.print("\"}}");
@@ -636,6 +928,7 @@ void setupPins() {
   attachPwm(Pins::BUZZER, Pwm::BUZZER_CHANNEL, Pwm::BUZZER_FREQ, Pwm::BUZZER_RESOLUTION);
   attachPwm(Pins::SERVO, Pwm::SERVO_CHANNEL, Pwm::SERVO_FREQ, Pwm::SERVO_RESOLUTION);
   setBootSafeOutputs();
+  oledBegin();
 }
 
 void setup() {
@@ -654,6 +947,11 @@ void loop() {
     processKeypad();
     applyAutomation();
     lastSensorAt = now;
+  }
+
+  if (now - lastOledAt >= OLED_INTERVAL_MS) {
+    oledRenderStatus();
+    lastOledAt = now;
   }
 
   if (now - lastTelemetryAt >= TELEMETRY_INTERVAL_MS) {

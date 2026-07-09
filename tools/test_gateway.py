@@ -35,11 +35,32 @@ class GatewayContractTest(unittest.TestCase):
     def test_mock_board_threshold_ack(self):
         board = MockBoardState()
         ack = board.apply_command(
-            {"type": "command", "set": {"lightThreshold": 25, "soundThreshold": 70}}
+            {
+                "type": "command",
+                "set": {
+                    "lightThreshold": 25,
+                    "soundThreshold": 70,
+                    "thresholdFocus": "soundThreshold",
+                },
+            }
         )
         self.assertTrue(ack["ok"])
         self.assertEqual(board.light_threshold, 25)
         self.assertEqual(board.sound_threshold, 70)
+        self.assertEqual(board.threshold_focus, "soundThreshold")
+
+    def test_mock_board_keypad_and_oled_contract(self):
+        board = MockBoardState()
+        board.apply_command({"type": "command", "mode": "energy"})
+        telemetry = board.telemetry()
+
+        self.assertEqual(telemetry["sensors"]["keypadKey"], "D")
+        self.assertEqual(telemetry["display"]["lastKey"], "D")
+        self.assertEqual(telemetry["display"]["focus"], "lightThreshold")
+        self.assertEqual(telemetry["health"]["oled"], "ready")
+        self.assertEqual(telemetry["health"]["keypadLastKey"], "D")
+        self.assertEqual(len(telemetry["display"]["lines"]), 6)
+        self.assertIn("MODE:ENERGY", telemetry["display"]["lines"])
 
 
 if __name__ == "__main__":

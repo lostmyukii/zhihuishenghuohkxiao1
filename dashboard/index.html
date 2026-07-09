@@ -176,6 +176,31 @@
         </div>
       </section>
 
+      <section class="panel display-panel" aria-labelledby="displayTitle">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">local display</p>
+            <h2 id="displayTitle">OLED 与 8键</h2>
+          </div>
+          <span class="small-tag" id="oledState">等待 OLED</span>
+        </div>
+
+        <div class="keypad-readout">
+          <article>
+            <span>最近按键</span>
+            <strong id="keypadKey">NONE</strong>
+          </article>
+          <article>
+            <span>AD 原始值</span>
+            <strong id="keypadRaw">等待</strong>
+          </article>
+        </div>
+
+        <div class="oled-screen" id="oledLines" aria-label="OLED 屏幕状态">
+          <span>等待 OLED 状态</span>
+        </div>
+      </section>
+
       <section class="panel actuator-panel" aria-labelledby="actuatorTitle">
         <div class="panel-head">
           <div>
@@ -226,7 +251,7 @@
       </section>
     </main>
 
-    <script src="./intent-core.js?v=20260709-voice-intent"></script>
-    <script src="./app.js?v=20260709-voice-intent"></script>
+    <script src="./intent-core.js?v=20260709-keypad-oled"></script>
+    <script src="./app.js?v=20260709-keypad-oled"></script>
   </body>
 </html>

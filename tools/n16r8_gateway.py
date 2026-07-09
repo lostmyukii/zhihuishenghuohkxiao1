@@ -57,6 +57,10 @@ class MockBoardState:
         self.light_threshold = 35
         self.temperature_threshold = 29
         self.sound_threshold = 65
+        self.away_delay_seconds = 10
+        self.threshold_focus = "lightThreshold"
+        self.last_key = "NONE"
+        self.keypad_raw = 4095
         self.started_at = time.time()
 
     def hello(self) -> Dict[str, Any]:
@@ -99,6 +103,26 @@ class MockBoardState:
             lamp = False
             fan = 0
         alerts = ["noise"] if self.mode == "study" and sound >= self.sound_threshold else []
+        focus_short = {
+            "lightThreshold": "LIGHT",
+            "temperatureThreshold": "TEMP",
+            "soundThreshold": "SOUND",
+            "awayDelaySeconds": "AWAY",
+        }.get(self.threshold_focus, "LIGHT")
+        focus_value = {
+            "lightThreshold": self.light_threshold,
+            "temperatureThreshold": self.temperature_threshold,
+            "soundThreshold": self.sound_threshold,
+            "awayDelaySeconds": self.away_delay_seconds,
+        }.get(self.threshold_focus, self.light_threshold)
+        display_lines = [
+            "N16R8 PRIMARY",
+            f"MODE:{self.mode.upper()}",
+            f"FOCUS:{focus_short} {focus_value}",
+            f"L:{light} T:{round(temperature)} S:{sound}",
+            f"KEY:{self.last_key} RAW:{self.keypad_raw}",
+            f"PIR:{'ON' if pir else 'OFF'} FAN:{fan}",
+        ]
         return {
             "type": "telemetry",
             "ts": int(elapsed * 1000),
@@ -109,6 +133,8 @@ class MockBoardState:
                 "temperature": temperature,
                 "humidity": humidity,
                 "pir": pir,
+                "keypadRaw": self.keypad_raw,
+                "keypadKey": self.last_key,
             },
             "actuators": {
                 "lamp": lamp,
@@ -122,11 +148,18 @@ class MockBoardState:
                 "score": 88 if self.mode == "energy" else 78,
                 "reason": "mock-board-frame-for-dashboard-validation",
             },
+            "display": {
+                "lines": display_lines,
+                "lastKey": self.last_key,
+                "focus": self.threshold_focus,
+            },
             "health": {
                 "profileId": PROFILE_ID,
                 "mqtt": "bridge",
                 "voice": "ready",
-                "thresholdFocus": "lightThreshold",
+                "thresholdFocus": self.threshold_focus,
+                "keypadLastKey": self.last_key,
+                "oled": "ready",
             },
         }
 
@@ -136,6 +169,8 @@ class MockBoardState:
         mode = frame.get("mode")
         if mode in {"study", "rest", "away", "energy"}:
             self.mode = mode
+            self.last_key = {"study": "A", "rest": "B", "away": "C", "energy": "D"}[mode]
+            self.keypad_raw = {"study": 120, "rest": 520, "away": 1020, "energy": 1520}[mode]
             return {"type": "ack", "ok": True, "message": f"mode={mode}"}
         settings = frame.get("set") or {}
         if "lightThreshold" in settings:
@@ -144,7 +179,18 @@ class MockBoardState:
             self.temperature_threshold = int(settings["temperatureThreshold"])
         if "soundThreshold" in settings:
             self.sound_threshold = int(settings["soundThreshold"])
+        if "awayDelaySeconds" in settings:
+            self.away_delay_seconds = int(settings["awayDelaySeconds"])
+        if settings.get("thresholdFocus") in {
+            "lightThreshold",
+            "temperatureThreshold",
+            "soundThreshold",
+            "awayDelaySeconds",
+        }:
+            self.threshold_focus = settings["thresholdFocus"]
         if settings:
+            self.last_key = "UP"
+            self.keypad_raw = 3050
             return {"type": "ack", "ok": True, "message": "set=thresholds"}
         if frame.get("type") == "voiceIntent":
             intent = frame.get("intent")

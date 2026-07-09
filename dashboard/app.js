@@ -33,6 +33,10 @@
     modeChip: document.querySelector("#modeChip"),
     ackStatus: document.querySelector("#ackStatus"),
     thresholdFocus: document.querySelector("#thresholdFocus"),
+    keypadKey: document.querySelector("#keypadKey"),
+    keypadRaw: document.querySelector("#keypadRaw"),
+    oledState: document.querySelector("#oledState"),
+    oledLines: document.querySelector("#oledLines"),
     thresholdForm: document.querySelector("#thresholdForm"),
     eventLog: document.querySelector("#eventLog"),
     clearLogButton: document.querySelector("#clearLogButton"),
@@ -158,14 +162,31 @@
     el.baudRate.textContent = `${hello?.baud || 115200}`;
   }
 
+  function renderOledLines(lines) {
+    const rows = Array.isArray(lines) && lines.length > 0 ? lines.slice(0, 6) : ["等待 OLED 状态"];
+    el.oledLines.innerHTML = "";
+    rows.forEach((line) => {
+      const row = document.createElement("span");
+      row.textContent = line || " ";
+      el.oledLines.appendChild(row);
+    });
+  }
+
   function renderTelemetry() {
     const telemetry = state.telemetry;
     const sensors = telemetry?.sensors || {};
     const actuators = telemetry?.actuators || {};
     const health = telemetry?.health || {};
+    const display = telemetry?.display || {};
 
     el.modeChip.textContent = telemetry?.mode || "等待模式";
     el.thresholdFocus.textContent = health.thresholdFocus || "lightThreshold";
+    el.keypadKey.textContent = display.lastKey || health.keypadLastKey || sensors.keypadKey || "NONE";
+    el.keypadRaw.textContent = valueOrWaiting(sensors.keypadRaw);
+    el.oledState.textContent =
+      health.oled === "ready" ? "OLED 已连接" : health.oled === "missing" ? "OLED 未检测" : "等待 OLED";
+    el.oledState.dataset.status = health.oled === "ready" ? "ok" : health.oled === "missing" ? "offline" : "idle";
+    renderOledLines(display.lines);
 
     el.metrics.light.textContent = valueOrWaiting(sensors.light, "%");
     el.metrics.temperature.textContent = valueOrWaiting(sensors.temperature, " C");

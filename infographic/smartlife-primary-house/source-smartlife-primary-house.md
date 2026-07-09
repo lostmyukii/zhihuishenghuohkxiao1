@@ -230,7 +230,7 @@ smartlife/primary/n16r8/voiceIntent
 遥测 `telemetry` 示例：
 
 ```json
-{"type":"telemetry","ts":123456,"mode":"study","sensors":{"light":31,"sound":22,"temperature":28.2,"humidity":55,"pir":true},"actuators":{"lamp":true,"fan":60,"curtain":45,"rgb":"blue","buzzer":false},"alerts":[],"energy":{"score":82,"reason":"光线不足，开启学习灯；有人在房间，保持舒适通风"},"health":{"profileId":"smartlife-primary-study-home-v1","mqtt":"bridge","voice":"ready","thresholdFocus":"lightThreshold"}}
+{"type":"telemetry","ts":123456,"mode":"study","sensors":{"light":31,"sound":22,"temperature":28.2,"humidity":55,"pir":true,"keypadRaw":120,"keypadKey":"A"},"actuators":{"lamp":true,"fan":60,"curtain":45,"rgb":"blue","buzzer":false},"alerts":[],"energy":{"score":82,"reason":"光线不足，开启学习灯；有人在房间，保持舒适通风"},"display":{"lines":["N16R8 PRIMARY","MODE:STUDY","FOCUS:LIGHT 35","L:31 T:28 S:22","KEY:A RAW:120","PIR:ON FAN:60"],"lastKey":"A","focus":"lightThreshold"},"health":{"profileId":"smartlife-primary-study-home-v1","mqtt":"bridge","voice":"ready","thresholdFocus":"lightThreshold","keypadLastKey":"A","oled":"ready"}}
 ```
 
 命令示例：
@@ -238,6 +238,7 @@ smartlife/primary/n16r8/voiceIntent
 ```json
 {"type":"command","mode":"study"}
 {"type":"command","mode":"energy"}
+{"type":"command","set":{"thresholdFocus":"soundThreshold"}}
 {"type":"command","set":{"lightThreshold":35}}
 {"type":"command","set":{"temperatureThreshold":29}}
 {"type":"command","actuator":{"lamp":false}}
