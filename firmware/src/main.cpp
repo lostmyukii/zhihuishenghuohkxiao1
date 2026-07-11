@@ -64,9 +64,11 @@ struct Thresholds {
 
 constexpr const char *PROJECT = "smartlife-primary";
 constexpr const char *PROFILE_ID = "smartlife-primary-study-home-v1";
-constexpr const char *FIRMWARE_VERSION = "0.1.0";
+constexpr const char *FIRMWARE_VERSION = "0.1.1";
 constexpr unsigned long TELEMETRY_INTERVAL_MS = 1000;
 constexpr unsigned long SENSOR_INTERVAL_MS = 200;
+constexpr unsigned long DHT_INTERVAL_MS = 2000;
+constexpr unsigned long DHT_STALE_MS = 6000;
 constexpr unsigned long OLED_INTERVAL_MS = 500;
 constexpr unsigned long MANUAL_OVERRIDE_MS = 10000;
 
@@ -77,6 +79,8 @@ Mode currentMode = Mode::STUDY;
 String serialBuffer;
 unsigned long lastTelemetryAt = 0;
 unsigned long lastSensorAt = 0;
+unsigned long lastDhtReadAt = 0;
+unsigned long lastDhtSuccessAt = 0;
 unsigned long manualOverrideUntil = 0;
 unsigned long lastOledAt = 0;
 bool oledReady = false;
@@ -371,7 +375,7 @@ void oledRenderStatus() {
   }
 }
 
-void readSensors() {
+void readFastSensors() {
   sensors.lightRaw = analogRead(Pins::LIGHT);
   sensors.soundRaw = analogRead(Pins::SOUND);
   sensors.light = percentFromAnalog(sensors.lightRaw);
@@ -380,13 +384,21 @@ void readSensors() {
   sensors.water = digitalRead(Pins::WATER) == HIGH;
   sensors.flame = digitalRead(Pins::FLAME) == LOW;
   sensors.mq2Alert = analogRead(Pins::MQ2) > 3000;
+}
 
+void readDhtSensor(unsigned long now) {
   float humidity = NAN;
   float temperature = NAN;
-  sensors.dhtValid = readDht11(humidity, temperature);
-  if (sensors.dhtValid) {
+  if (readDht11(humidity, temperature)) {
     sensors.humidity = humidity;
     sensors.temperature = temperature;
+    sensors.dhtValid = true;
+    lastDhtSuccessAt = now;
+    return;
+  }
+
+  if (lastDhtSuccessAt == 0 || now - lastDhtSuccessAt >= DHT_STALE_MS) {
+    sensors.dhtValid = false;
   }
 }
 
@@ -689,10 +701,21 @@ void loop() {
   processSerial();
 
   const unsigned long now = millis();
+  bool sensorUpdated = false;
   if (now - lastSensorAt >= SENSOR_INTERVAL_MS) {
-    readSensors();
-    applyAutomation();
+    readFastSensors();
     lastSensorAt = now;
+    sensorUpdated = true;
+  }
+
+  if (lastDhtReadAt == 0 || now - lastDhtReadAt >= DHT_INTERVAL_MS) {
+    readDhtSensor(now);
+    lastDhtReadAt = now;
+    sensorUpdated = true;
+  }
+
+  if (sensorUpdated) {
+    applyAutomation();
   }
 
   if (now - lastOledAt >= OLED_INTERVAL_MS) {
