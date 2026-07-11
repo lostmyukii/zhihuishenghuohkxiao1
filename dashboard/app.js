@@ -43,6 +43,8 @@
     voiceForm: document.querySelector("#voiceForm"),
     voiceTextInput: document.querySelector("#voiceTextInput"),
     voiceResult: document.querySelector("#voiceResult"),
+    lampOnButton: document.querySelector("#lampOnButton"),
+    lampOffButton: document.querySelector("#lampOffButton"),
     studyRoomState: document.querySelector("#studyRoomState"),
     livingRoomState: document.querySelector("#livingRoomState"),
     entryRoomState: document.querySelector("#entryRoomState"),
@@ -131,6 +133,8 @@
     el.voiceQuickGrid.querySelectorAll("button").forEach((button) => {
       button.disabled = !state.connected;
     });
+    el.lampOnButton.disabled = !state.connected;
+    el.lampOffButton.disabled = !state.connected;
   }
 
   function renderStatus() {
@@ -260,7 +264,13 @@
     const text = line.trim();
     if (!text) return;
     if (!text.startsWith("{")) {
-      addLog("error", "忽略非 JSON 串口文本");
+      const jsonStart = text.indexOf("{");
+      const jsonEnd = text.lastIndexOf("}");
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        processLine(text.slice(jsonStart, jsonEnd + 1));
+      } else {
+        addLog("frame", "忽略启动日志");
+      }
       return;
     }
     try {
@@ -302,6 +312,7 @@
     try {
       state.port = await navigator.serial.requestPort();
       await state.port.open({ baudRate: 115200 });
+      await state.port.setSignals?.({ dataTerminalReady: false, requestToSend: false });
       state.reader = state.port.readable.getReader();
       state.writer = state.port.writable.getWriter();
       state.connected = true;
@@ -416,6 +427,14 @@
       button.addEventListener("click", () => {
         sendCommand({ type: "command", mode: button.dataset.mode });
       });
+    });
+
+    el.lampOnButton.addEventListener("click", () => {
+      sendCommand({ type: "command", actuator: { lamp: true } });
+    });
+
+    el.lampOffButton.addEventListener("click", () => {
+      sendCommand({ type: "command", actuator: { lamp: false } });
     });
 
     el.thresholdForm.addEventListener("submit", (event) => {

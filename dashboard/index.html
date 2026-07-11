@@ -208,6 +208,11 @@
             <small>D13 / GPIO13</small>
           </article>
         </div>
+
+        <div class="actuator-actions" aria-label="学习灯手动控制">
+          <button class="secondary-action" id="lampOnButton" type="button" disabled>打开学习灯</button>
+          <button class="secondary-action" id="lampOffButton" type="button" disabled>关闭学习灯</button>
+        </div>
       </section>
 
       <section class="panel event-panel" aria-labelledby="eventTitle">
@@ -223,6 +228,6 @@
     </main>
 
     <script src="./intent-core.js?v=20260711-minimal-hardware"></script>
-    <script src="./app.js?v=20260711-minimal-hardware"></script>
+    <script src="./app.js?v=20260711-webserial-lamp"></script>
   </body>
 </html>

@@ -213,6 +213,13 @@ h2 {
   padding: 16px;
 }
 
+.actuator-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 16px;
+}
+
 .primary-action {
   border-color: var(--teal);
   background: var(--teal);
