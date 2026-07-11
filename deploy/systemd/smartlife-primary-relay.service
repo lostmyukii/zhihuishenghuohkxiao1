@@ -1,0 +1,16 @@
+[Unit]
+Description=SmartLife Primary MQTT WebSocket Relay on 19266
+After=network.target smartlife-primary-mqtt.service
+Wants=smartlife-primary-mqtt.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/smartlife-primary
+EnvironmentFile=/home/ubuntu/smartlife-primary/deploy/.env
+ExecStart=/home/ubuntu/smartlife-primary/.venv/bin/python tools/n16r8_cloud_relay.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

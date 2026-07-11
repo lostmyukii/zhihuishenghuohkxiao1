@@ -1,0 +1,14 @@
+[Unit]
+Description=SmartLife Primary Dashboard Static Site on 19267
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/smartlife-primary
+ExecStart=/home/ubuntu/smartlife-primary/.venv/bin/python -m http.server 19267 --bind 127.0.0.1 -d dashboard
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
