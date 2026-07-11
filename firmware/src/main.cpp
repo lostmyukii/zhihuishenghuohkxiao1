@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <DHT.h>
 #include <Wire.h>
 
 #if __has_include(<esp_arduino_version.h>)
@@ -28,6 +29,8 @@ constexpr uint8_t BUZZER_CHANNEL = 1;
 constexpr uint8_t BUZZER_RESOLUTION = 8;
 constexpr uint32_t BUZZER_FREQ = 2200;
 }  // namespace Pwm
+
+DHT dht(Pins::DHT, DHT11);
 
 enum class Mode {
   STUDY,
@@ -64,7 +67,7 @@ struct Thresholds {
 
 constexpr const char *PROJECT = "smartlife-primary";
 constexpr const char *PROFILE_ID = "smartlife-primary-study-home-v1";
-constexpr const char *FIRMWARE_VERSION = "0.1.1";
+constexpr const char *FIRMWARE_VERSION = "0.1.2";
 constexpr unsigned long TELEMETRY_INTERVAL_MS = 1000;
 constexpr unsigned long SENSOR_INTERVAL_MS = 200;
 constexpr unsigned long DHT_INTERVAL_MS = 2000;
@@ -172,37 +175,6 @@ void setLamp(bool on) {
 void setBootSafeOutputs() {
   setLamp(false);
   setBuzzer(false);
-}
-
-bool readDht11(float &humidity, float &temperature) {
-  uint8_t data[5] = {0, 0, 0, 0, 0};
-
-  pinMode(Pins::DHT, OUTPUT_OPEN_DRAIN);
-  digitalWrite(Pins::DHT, LOW);
-  delay(20);
-  digitalWrite(Pins::DHT, HIGH);
-  delayMicroseconds(40);
-  pinMode(Pins::DHT, INPUT_PULLUP);
-
-  if (pulseIn(Pins::DHT, LOW, 1000) == 0) return false;
-  if (pulseIn(Pins::DHT, HIGH, 1000) == 0) return false;
-
-  for (uint8_t bit = 0; bit < 40; bit++) {
-    const unsigned long lowTime = pulseIn(Pins::DHT, LOW, 1000);
-    const unsigned long highTime = pulseIn(Pins::DHT, HIGH, 1000);
-    if (lowTime == 0 || highTime == 0) return false;
-    data[bit / 8] <<= 1;
-    if (highTime > lowTime) {
-      data[bit / 8] |= 1;
-    }
-  }
-
-  const uint8_t checksum = data[0] + data[1] + data[2] + data[3];
-  if (checksum != data[4]) return false;
-
-  humidity = data[0] + data[1] * 0.1f;
-  temperature = data[2] + data[3] * 0.1f;
-  return true;
 }
 
 int percentFromAnalog(int raw) {
@@ -387,9 +359,9 @@ void readFastSensors() {
 }
 
 void readDhtSensor(unsigned long now) {
-  float humidity = NAN;
-  float temperature = NAN;
-  if (readDht11(humidity, temperature)) {
+  const float humidity = dht.readHumidity();
+  const float temperature = dht.readTemperature();
+  if (!isnan(humidity) && !isnan(temperature)) {
     sensors.humidity = humidity;
     sensors.temperature = temperature;
     sensors.dhtValid = true;
@@ -685,6 +657,7 @@ void setupPins() {
   pinMode(Pins::SOUND, INPUT);
 
   analogReadResolution(12);
+  dht.begin();
   attachPwm(Pins::BUZZER, Pwm::BUZZER_CHANNEL, Pwm::BUZZER_FREQ, Pwm::BUZZER_RESOLUTION);
   setBootSafeOutputs();
   oledBegin();
