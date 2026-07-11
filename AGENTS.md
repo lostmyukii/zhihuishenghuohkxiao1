@@ -16,11 +16,11 @@
 | --- | --- |
 | `开发文档.md` | 开发合同、硬件连接、串口协议、MQTT 路线、实施顺序。 |
 | `设计方案.md` | 规则审计与作品定位。 |
-| `assets/wiring/n16r8-primary-wiring.png` | image 模型生成的硬件连接示意图。 |
-| `assets/wiring/prompts/n16r8-primary-wiring.md` | 连线示意图提示词。 |
+| `assets/wiring/n16r8-primary-wiring.png` | 旧版 image 模型连线示意图，可能仍含 8键/RGB/风扇/舵机，精确端口以本文档为准。 |
+| `assets/wiring/prompts/n16r8-primary-wiring.md` | 当前最小硬件版本的连线示意图提示词。 |
 | `infographic/smartlife-primary-house/infographic.png` | 小学组任务映射信息图。 |
 
-如果图片局部小字和 `开发文档.md` 表格不一致，以 `开发文档.md` 和实板丝印复核为准。
+如果图片局部小字和 `开发文档.md` 表格不一致，以 `开发文档.md` 和实板丝印复核为准。当前硬件没有 8键AD、RGB 灯带、风扇和舵机，不再把这些模块作为验收项。
 
 ## GitHub 同步规则
 
@@ -44,14 +44,10 @@
 | 模块 | GPIO/接口 | 角色 |
 | --- | --- | --- |
 | 光敏传感器 | `ADC1 / GPIO1` | 光照采集、光暗开灯、节能判断 |
-| DHT11 温湿度 | `D14 / GPIO14` | 温度阈值、舒适判断 |
+| DHT11 温湿度 | `D14 / GPIO14` | 温度阈值、舒适判断、OLED/网页提示 |
 | 声音传感器 | `ADC4 / GPIO4` | 学习噪声提醒 |
 | PIR 人体红外 | `D5 / GPIO5` | 有人/无人、离家提醒、节能响应 |
-| 8键AD | `ADC3 / GPIO3` | 模式切换、阈值焦点 |
 | 学习灯/继电器 | `GPIO48` | 低压灯或指示灯 |
-| 风扇 PWM | `D11 / GPIO11` | 通风/降温 |
-| 舵机窗帘 | `D9 / GPIO9` | 窗帘模型 |
-| RGB 灯环 | `GPIO47` | 模式状态灯 |
 | 无源蜂鸣器 | `D13 / GPIO13` | 短提醒 |
 | OLED | `SDA=GPIO41, SCL=GPIO42` | 本地数据显示 |
 
@@ -64,7 +60,7 @@
 - 不接 `220V`。
 - 所有模块共地。
 - ESP32-S3 输入信号不超过 `3.3V`。
-- 上电默认：风扇关、继电器关、蜂鸣器静音、RGB 安全色。
+- 上电默认：继电器关、蜂鸣器静音。
 - Web 或语音的自由文本不能直接控制危险动作，必须经过白名单意图。
 - `actuator.buzzer=false` 只代表停止手动蜂鸣测试，不代表关闭自动安全提醒。
 
@@ -98,18 +94,12 @@ smartlife/primary/n16r8
 - 固件必须返回 `ack`。
 - 不要把中文调试日志混进正式 JSON 行。
 
-## 8键AD 约定
+## 最小硬件约定
 
-| 键 | 功能 |
-| --- | --- |
-| A | 学习模式 |
-| B | 休息模式 |
-| C | 离家模式 |
-| D | 节能模式 |
-| 左/右 | 切换阈值焦点 |
-| 上/下 | 调整当前阈值 |
-
-默认阈值焦点建议为 `lightThreshold`。OLED 和 Dashboard 都要显示当前焦点。
+- 当前实物没有 8键AD，模式切换统一通过 Dashboard 按钮和语音白名单完成。
+- 当前实物没有 RGB 灯带、风扇、舵机，状态反馈统一落到 OLED、Dashboard、学习灯和蜂鸣器。
+- 阈值调整统一通过 Dashboard 阈值表单下发，固件不再读取 `GPIO3` 作为按键输入。
+- 串口 `hello/telemetry` 不应声明 `keypad`、`rgb`、`fan` 或 `servo/curtain` 字段。
 
 ## 开发顺序
 
@@ -117,7 +107,7 @@ smartlife/primary/n16r8
 2. Dashboard：Web Serial、真实在线状态、传感器/执行器卡片、模式按钮、阈值面板。
 3. Gateway/Relay：WSS/MQTT，topic 前缀可配置。
 4. 语音：先文本/快捷按钮，再接 HTTPS STT。
-5. 模型：按 `assets/wiring/n16r8-primary-wiring.png` 和 `开发文档.md` 布线。
+5. 模型：按 `开发文档.md` 的最小硬件合同布线，旧图如有冲突以文档为准。
 
 ## 验证命令
 

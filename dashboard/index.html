@@ -78,9 +78,6 @@
           </div>
         </div>
 
-        <div class="wiring-preview">
-          <img src="../assets/wiring/n16r8-primary-wiring.png" alt="N16R8 小学组硬件连接示意图" />
-        </div>
       </section>
 
       <section class="panel controls-panel" aria-labelledby="controlsTitle">
@@ -144,7 +141,7 @@
             <p class="eyebrow">sensor frames</p>
             <h2 id="sensorTitle">传感器</h2>
           </div>
-          <span class="small-tag" id="thresholdFocus">lightThreshold</span>
+          <span class="small-tag" id="thresholdSummary">等待阈值</span>
         </div>
 
         <div class="metric-grid">
@@ -180,20 +177,9 @@
         <div class="panel-head">
           <div>
             <p class="eyebrow">local display</p>
-            <h2 id="displayTitle">OLED 与 8键</h2>
+            <h2 id="displayTitle">OLED 本地屏</h2>
           </div>
           <span class="small-tag" id="oledState">等待 OLED</span>
-        </div>
-
-        <div class="keypad-readout">
-          <article>
-            <span>最近按键</span>
-            <strong id="keypadKey">NONE</strong>
-          </article>
-          <article>
-            <span>AD 原始值</span>
-            <strong id="keypadRaw">等待</strong>
-          </article>
         </div>
 
         <div class="oled-screen" id="oledLines" aria-label="OLED 屏幕状态">
@@ -217,21 +203,6 @@
             <small>GPIO48</small>
           </article>
           <article class="metric">
-            <span>风扇</span>
-            <strong id="fanValue">等待</strong>
-            <small>D11 / GPIO11</small>
-          </article>
-          <article class="metric">
-            <span>窗帘</span>
-            <strong id="curtainValue">等待</strong>
-            <small>D9 / GPIO9</small>
-          </article>
-          <article class="metric">
-            <span>状态灯</span>
-            <strong id="rgbValue">等待</strong>
-            <small>GPIO47</small>
-          </article>
-          <article class="metric">
             <span>蜂鸣器</span>
             <strong id="buzzerValue">等待</strong>
             <small>D13 / GPIO13</small>
@@ -251,7 +222,7 @@
       </section>
     </main>
 
-    <script src="./intent-core.js?v=20260709-keypad-oled"></script>
-    <script src="./app.js?v=20260709-keypad-oled"></script>
+    <script src="./intent-core.js?v=20260711-minimal-hardware"></script>
+    <script src="./app.js?v=20260711-minimal-hardware"></script>
   </body>
 </html>

@@ -5,13 +5,6 @@
 #include <esp_arduino_version.h>
 #endif
 
-#if __has_include(<esp32-hal-rgb-led.h>)
-#include <esp32-hal-rgb-led.h>
-#define HAS_NEOPIXEL_WRITE 1
-#else
-#define HAS_NEOPIXEL_WRITE 0
-#endif
-
 #ifndef ESP_ARDUINO_VERSION_MAJOR
 #define ESP_ARDUINO_VERSION_MAJOR 2
 #endif
@@ -19,32 +12,21 @@
 namespace Pins {
 constexpr uint8_t LIGHT = 1;
 constexpr uint8_t MQ2 = 2;
-constexpr uint8_t KEYPAD = 3;
 constexpr uint8_t SOUND = 4;
 constexpr uint8_t PIR = 5;
 constexpr uint8_t FLAME = 6;
 constexpr uint8_t WATER = 8;
-constexpr uint8_t SERVO = 9;
-constexpr uint8_t FAN_PWM = 11;
-constexpr uint8_t FAN_DIR = 12;
 constexpr uint8_t BUZZER = 13;
 constexpr uint8_t DHT = 14;
 constexpr uint8_t OLED_SDA = 41;
 constexpr uint8_t OLED_SCL = 42;
-constexpr uint8_t RGB = 47;
 constexpr uint8_t LAMP = 48;
 }  // namespace Pins
 
 namespace Pwm {
-constexpr uint8_t FAN_CHANNEL = 0;
 constexpr uint8_t BUZZER_CHANNEL = 1;
-constexpr uint8_t SERVO_CHANNEL = 2;
-constexpr uint8_t FAN_RESOLUTION = 8;
 constexpr uint8_t BUZZER_RESOLUTION = 8;
-constexpr uint8_t SERVO_RESOLUTION = 16;
-constexpr uint32_t FAN_FREQ = 5000;
 constexpr uint32_t BUZZER_FREQ = 2200;
-constexpr uint32_t SERVO_FREQ = 50;
 }  // namespace Pwm
 
 enum class Mode {
@@ -54,19 +36,11 @@ enum class Mode {
   ENERGY,
 };
 
-enum class ThresholdFocus {
-  LIGHT,
-  TEMPERATURE,
-  SOUND,
-  AWAY_DELAY,
-};
-
 struct Sensors {
   int lightRaw = 0;
   int light = 0;
   int soundRaw = 0;
   int sound = 0;
-  int keypadRaw = 4095;
   bool pir = false;
   bool water = false;
   bool flame = false;
@@ -78,9 +52,6 @@ struct Sensors {
 
 struct Actuators {
   bool lamp = false;
-  int fan = 0;
-  int curtain = 45;
-  const char *rgb = "safe";
   bool buzzer = false;
 };
 
@@ -103,15 +74,10 @@ Sensors sensors;
 Actuators actuators;
 Thresholds thresholds;
 Mode currentMode = Mode::STUDY;
-ThresholdFocus thresholdFocus = ThresholdFocus::LIGHT;
 String serialBuffer;
 unsigned long lastTelemetryAt = 0;
 unsigned long lastSensorAt = 0;
 unsigned long manualOverrideUntil = 0;
-const char *lastKey = "NONE";
-const char *lastKeyEvent = "NONE";
-unsigned long lastKeyAt = 0;
-unsigned long lastKeyEventAt = 0;
 unsigned long lastOledAt = 0;
 bool oledReady = false;
 
@@ -135,20 +101,6 @@ const char *modeName(Mode mode) {
   return "study";
 }
 
-const char *focusName(ThresholdFocus focus) {
-  switch (focus) {
-    case ThresholdFocus::LIGHT:
-      return "lightThreshold";
-    case ThresholdFocus::TEMPERATURE:
-      return "temperatureThreshold";
-    case ThresholdFocus::SOUND:
-      return "soundThreshold";
-    case ThresholdFocus::AWAY_DELAY:
-      return "awayDelaySeconds";
-  }
-  return "lightThreshold";
-}
-
 const char *modeDisplayName(Mode mode) {
   switch (mode) {
     case Mode::STUDY:
@@ -163,34 +115,6 @@ const char *modeDisplayName(Mode mode) {
   return "STUDY";
 }
 
-const char *focusShortName(ThresholdFocus focus) {
-  switch (focus) {
-    case ThresholdFocus::LIGHT:
-      return "LIGHT";
-    case ThresholdFocus::TEMPERATURE:
-      return "TEMP";
-    case ThresholdFocus::SOUND:
-      return "SOUND";
-    case ThresholdFocus::AWAY_DELAY:
-      return "AWAY";
-  }
-  return "LIGHT";
-}
-
-String focusedThresholdValue() {
-  switch (thresholdFocus) {
-    case ThresholdFocus::LIGHT:
-      return String(thresholds.light);
-    case ThresholdFocus::TEMPERATURE:
-      return String(static_cast<int>(thresholds.temperature + 0.5f));
-    case ThresholdFocus::SOUND:
-      return String(thresholds.sound);
-    case ThresholdFocus::AWAY_DELAY:
-      return String(thresholds.awayDelaySeconds);
-  }
-  return String(thresholds.light);
-}
-
 String displayLine(uint8_t index) {
   switch (index) {
     case 0:
@@ -198,15 +122,18 @@ String displayLine(uint8_t index) {
     case 1:
       return String("MODE:") + modeDisplayName(currentMode);
     case 2:
-      return String("FOCUS:") + focusShortName(thresholdFocus) + " " + focusedThresholdValue();
+      return String("TH:L") + thresholds.light + " T" + static_cast<int>(thresholds.temperature + 0.5f) +
+             " S" + thresholds.sound;
     case 3:
       return String("L:") + sensors.light + " T:" +
              (sensors.dhtValid ? String(static_cast<int>(sensors.temperature + 0.5f)) : "--") + " S:" +
              sensors.sound;
     case 4:
-      return String("KEY:") + lastKeyEvent + " RAW:" + sensors.keypadRaw;
+      return String("PIR:") + (sensors.pir ? "ON" : "OFF") + " LAMP:" + (actuators.lamp ? "ON" : "OFF");
     case 5:
-      return String("PIR:") + (sensors.pir ? "ON" : "OFF") + " FAN:" + actuators.fan;
+      return String("TEMP:") +
+             (sensors.dhtValid && sensors.temperature >= thresholds.temperature ? "HI" : "OK") + " BZ:" +
+             (actuators.buzzer ? "ON" : "OFF");
   }
   return "";
 }
@@ -228,12 +155,6 @@ void writePwm(uint8_t pin, uint8_t channel, uint32_t duty) {
 #endif
 }
 
-void setFan(int percent) {
-  actuators.fan = clampInt(percent, 0, 100);
-  digitalWrite(Pins::FAN_DIR, actuators.fan > 0 ? HIGH : LOW);
-  writePwm(Pins::FAN_PWM, Pwm::FAN_CHANNEL, map(actuators.fan, 0, 100, 0, 255));
-}
-
 void setBuzzer(bool on) {
   actuators.buzzer = on;
   writePwm(Pins::BUZZER, Pwm::BUZZER_CHANNEL, on ? 128 : 0);
@@ -244,51 +165,8 @@ void setLamp(bool on) {
   digitalWrite(Pins::LAMP, on ? HIGH : LOW);
 }
 
-void setCurtain(int angle) {
-  actuators.curtain = clampInt(angle, 0, 180);
-  const uint32_t micros = map(actuators.curtain, 0, 180, 500, 2400);
-  const uint32_t duty = (micros * 65535UL) / 20000UL;
-  writePwm(Pins::SERVO, Pwm::SERVO_CHANNEL, duty);
-}
-
-void setRgb(const char *color) {
-  actuators.rgb = color;
-  uint8_t red = 2;
-  uint8_t green = 2;
-  uint8_t blue = 2;
-  if (strcmp(color, "off") == 0) {
-    red = 0;
-    green = 0;
-    blue = 0;
-  } else if (strcmp(color, "blue") == 0) {
-    red = 0;
-    green = 0;
-    blue = 16;
-  } else if (strcmp(color, "amber") == 0) {
-    red = 16;
-    green = 8;
-    blue = 0;
-  } else if (strcmp(color, "red") == 0) {
-    red = 18;
-    green = 0;
-    blue = 0;
-  } else if (strcmp(color, "green") == 0) {
-    red = 0;
-    green = 16;
-    blue = 0;
-  }
-#if HAS_NEOPIXEL_WRITE
-  neopixelWrite(Pins::RGB, red, green, blue);
-#else
-  digitalWrite(Pins::RGB, (red || green || blue) ? HIGH : LOW);
-#endif
-}
-
 void setBootSafeOutputs() {
   setLamp(false);
-  setFan(0);
-  setCurtain(45);
-  setRgb("safe");
   setBuzzer(false);
 }
 
@@ -496,7 +374,6 @@ void oledRenderStatus() {
 void readSensors() {
   sensors.lightRaw = analogRead(Pins::LIGHT);
   sensors.soundRaw = analogRead(Pins::SOUND);
-  sensors.keypadRaw = analogRead(Pins::KEYPAD);
   sensors.light = percentFromAnalog(sensors.lightRaw);
   sensors.sound = percentFromAnalog(sensors.soundRaw);
   sensors.pir = digitalRead(Pins::PIR) == HIGH;
@@ -513,71 +390,9 @@ void readSensors() {
   }
 }
 
-const char *decodeKeypad(int raw) {
-  if (raw > 3900) return "NONE";
-  if (raw < 300) return "A";
-  if (raw < 800) return "B";
-  if (raw < 1300) return "C";
-  if (raw < 1800) return "D";
-  if (raw < 2300) return "LEFT";
-  if (raw < 2800) return "RIGHT";
-  if (raw < 3300) return "UP";
-  if (raw < 3800) return "DOWN";
-  return "NONE";
-}
-
-void adjustFocusedThreshold(int direction) {
-  switch (thresholdFocus) {
-    case ThresholdFocus::LIGHT:
-      thresholds.light = clampInt(thresholds.light + direction * 5, 0, 100);
-      break;
-    case ThresholdFocus::TEMPERATURE:
-      thresholds.temperature = constrain(thresholds.temperature + direction * 0.5f, 10.0f, 40.0f);
-      break;
-    case ThresholdFocus::SOUND:
-      thresholds.sound = clampInt(thresholds.sound + direction * 5, 0, 100);
-      break;
-    case ThresholdFocus::AWAY_DELAY:
-      thresholds.awayDelaySeconds = clampInt(thresholds.awayDelaySeconds + direction * 5, 0, 120);
-      break;
-  }
-}
-
-void cycleThresholdFocus(int direction) {
-  int index = static_cast<int>(thresholdFocus) + direction;
-  if (index < 0) index = 3;
-  if (index > 3) index = 0;
-  thresholdFocus = static_cast<ThresholdFocus>(index);
-}
-
 void setMode(Mode mode) {
   currentMode = mode;
   manualOverrideUntil = 0;
-}
-
-void processKeypad() {
-  const char *key = decodeKeypad(sensors.keypadRaw);
-  const unsigned long now = millis();
-  if (strcmp(key, "NONE") == 0) {
-    lastKey = "NONE";
-    return;
-  }
-  if (strcmp(key, lastKey) == 0 && now - lastKeyAt < 400) {
-    return;
-  }
-  lastKey = key;
-  lastKeyAt = now;
-  lastKeyEvent = key;
-  lastKeyEventAt = now;
-
-  if (strcmp(key, "A") == 0) setMode(Mode::STUDY);
-  if (strcmp(key, "B") == 0) setMode(Mode::REST);
-  if (strcmp(key, "C") == 0) setMode(Mode::AWAY);
-  if (strcmp(key, "D") == 0) setMode(Mode::ENERGY);
-  if (strcmp(key, "LEFT") == 0) cycleThresholdFocus(-1);
-  if (strcmp(key, "RIGHT") == 0) cycleThresholdFocus(1);
-  if (strcmp(key, "UP") == 0) adjustFocusedThreshold(1);
-  if (strcmp(key, "DOWN") == 0) adjustFocusedThreshold(-1);
 }
 
 void applyAutomation() {
@@ -592,30 +407,18 @@ void applyAutomation() {
   switch (currentMode) {
     case Mode::STUDY:
       setLamp(lightLow);
-      setFan(tempHigh ? 60 : 0);
-      setCurtain(45);
-      setRgb("blue");
-      setBuzzer(soundHigh);
+      setBuzzer(soundHigh || tempHigh);
       break;
     case Mode::REST:
       setLamp(false);
-      setFan(0);
-      setCurtain(110);
-      setRgb("amber");
       setBuzzer(false);
       break;
     case Mode::AWAY:
       setLamp(false);
-      setFan(0);
-      setCurtain(0);
-      setRgb(sensors.pir ? "red" : "green");
       setBuzzer(sensors.pir);
       break;
     case Mode::ENERGY:
       setLamp(sensors.pir && lightLow);
-      setFan(sensors.pir && tempHigh ? 40 : 0);
-      setCurtain(lightLow ? 45 : 110);
-      setRgb("green");
       setBuzzer(false);
       break;
   }
@@ -636,26 +439,6 @@ bool parseBoolField(const String &line, const char *key, bool fallback) {
   if (tail.startsWith("true")) return true;
   if (tail.startsWith("false")) return false;
   return fallback;
-}
-
-bool applyThresholdFocusCommand(const String &line) {
-  if (line.indexOf("\"thresholdFocus\":\"lightThreshold\"") >= 0) {
-    thresholdFocus = ThresholdFocus::LIGHT;
-    return true;
-  }
-  if (line.indexOf("\"thresholdFocus\":\"temperatureThreshold\"") >= 0) {
-    thresholdFocus = ThresholdFocus::TEMPERATURE;
-    return true;
-  }
-  if (line.indexOf("\"thresholdFocus\":\"soundThreshold\"") >= 0) {
-    thresholdFocus = ThresholdFocus::SOUND;
-    return true;
-  }
-  if (line.indexOf("\"thresholdFocus\":\"awayDelaySeconds\"") >= 0) {
-    thresholdFocus = ThresholdFocus::AWAY_DELAY;
-    return true;
-  }
-  return false;
 }
 
 void emitAck(bool ok, const String &message) {
@@ -719,10 +502,6 @@ void processCommand(String line) {
     handled = true;
     message = "set=awayDelaySeconds";
   }
-  if (applyThresholdFocusCommand(line)) {
-    handled = true;
-    message = "set=thresholdFocus";
-  }
 
   if (line.indexOf("\"actuator\"") >= 0) {
     manualOverrideUntil = millis() + MANUAL_OVERRIDE_MS;
@@ -735,16 +514,6 @@ void processCommand(String line) {
       setBuzzer(parseBoolField(line, "\"buzzer\":", actuators.buzzer));
       handled = true;
       message = "actuator=buzzer";
-    }
-    if (line.indexOf("\"fan\":") >= 0) {
-      setFan(clampInt(parseIntAfter(line, "\"fan\":", actuators.fan), 0, 100));
-      handled = true;
-      message = "actuator=fan";
-    }
-    if (line.indexOf("\"curtain\":") >= 0) {
-      setCurtain(clampInt(parseIntAfter(line, "\"curtain\":", actuators.curtain), 0, 180));
-      handled = true;
-      message = "actuator=curtain";
     }
   }
 
@@ -773,8 +542,8 @@ void emitHello() {
   Serial.print(FIRMWARE_VERSION);
   Serial.print("\",\"deviceName\":\"N16R8 SmartLife Primary Study Home\",\"baud\":115200");
   Serial.print(",\"capabilities\":[\"webSerial\",\"mqttBridge\",\"dashboard\",\"voiceIntent\",\"energyScore\"]");
-  Serial.print(",\"pins\":{\"light\":1,\"sound\":4,\"dht\":14,\"pir\":5,\"keypad\":3,\"lamp\":48");
-  Serial.print(",\"fanPwm\":11,\"fanDir\":12,\"servo\":9,\"rgb\":47,\"buzzer\":13,\"oledSda\":41,\"oledScl\":42}");
+  Serial.print(",\"pins\":{\"light\":1,\"sound\":4,\"dht\":14,\"pir\":5,\"lamp\":48");
+  Serial.print(",\"buzzer\":13,\"oledSda\":41,\"oledScl\":42}");
   Serial.println("}");
 }
 
@@ -788,6 +557,11 @@ void emitAlerts() {
   if (currentMode == Mode::STUDY && sensors.sound >= thresholds.sound) {
     if (wrote) Serial.print(",");
     Serial.print("\"noise\"");
+    wrote = true;
+  }
+  if (currentMode == Mode::STUDY && sensors.dhtValid && sensors.temperature >= thresholds.temperature) {
+    if (wrote) Serial.print(",");
+    Serial.print("\"temperature\"");
     wrote = true;
   }
   if (sensors.mq2Alert) {
@@ -810,14 +584,13 @@ void emitAlerts() {
 int energyScore() {
   int score = 80;
   if (actuators.lamp && sensors.light > thresholds.light) score -= 20;
-  if (actuators.fan > 0 && sensors.dhtValid && sensors.temperature < thresholds.temperature) score -= 15;
-  if (!sensors.pir && (actuators.lamp || actuators.fan > 0)) score -= 25;
+  if (!sensors.pir && actuators.lamp) score -= 25;
   if (currentMode == Mode::ENERGY) score += 10;
   return clampInt(score, 0, 100);
 }
 
 const char *energyReason() {
-  if (!sensors.pir && !actuators.lamp && actuators.fan == 0) return "empty-room-outputs-off";
+  if (!sensors.pir && !actuators.lamp) return "empty-room-light-off";
   if (currentMode == Mode::ENERGY) return "energy-mode-balances-light-and-comfort";
   if (currentMode == Mode::STUDY) return "study-mode-keeps-comfort-when-needed";
   return "scene-rules-active";
@@ -831,11 +604,7 @@ void emitDisplayJson() {
     Serial.print(displayLine(index));
     Serial.print("\"");
   }
-  Serial.print("],\"lastKey\":\"");
-  Serial.print(lastKeyEvent);
-  Serial.print("\",\"focus\":\"");
-  Serial.print(focusName(thresholdFocus));
-  Serial.print("\"}");
+  Serial.print("]}");
 }
 
 void emitTelemetry() {
@@ -857,20 +626,9 @@ void emitTelemetry() {
   emitFloatOrNull(sensors.humidity, 1);
   Serial.print(",\"pir\":");
   Serial.print(sensors.pir ? "true" : "false");
-  Serial.print(",\"keypadRaw\":");
-  Serial.print(sensors.keypadRaw);
-  Serial.print(",\"keypadKey\":\"");
-  Serial.print(lastKeyEvent);
-  Serial.print("\"");
   Serial.print("},\"actuators\":{\"lamp\":");
   Serial.print(actuators.lamp ? "true" : "false");
-  Serial.print(",\"fan\":");
-  Serial.print(actuators.fan);
-  Serial.print(",\"curtain\":");
-  Serial.print(actuators.curtain);
-  Serial.print(",\"rgb\":\"");
-  Serial.print(actuators.rgb);
-  Serial.print("\",\"buzzer\":");
+  Serial.print(",\"buzzer\":");
   Serial.print(actuators.buzzer ? "true" : "false");
   Serial.print("},\"alerts\":");
   emitAlerts();
@@ -882,13 +640,7 @@ void emitTelemetry() {
   emitDisplayJson();
   Serial.print(",\"health\":{\"profileId\":\"");
   Serial.print(PROFILE_ID);
-  Serial.print("\",\"mqtt\":\"bridge\",\"voice\":\"ready\",\"thresholdFocus\":\"");
-  Serial.print(focusName(thresholdFocus));
-  Serial.print("\",\"keypadLastKey\":\"");
-  Serial.print(lastKeyEvent);
-  Serial.print("\",\"keypadLastMs\":");
-  Serial.print(lastKeyEventAt);
-  Serial.print(",\"oled\":\"");
+  Serial.print("\",\"mqtt\":\"bridge\",\"voice\":\"ready\",\"oled\":\"");
   Serial.print(oledReady ? "ready" : "missing");
   Serial.print("\",\"dht\":\"");
   Serial.print(sensors.dhtValid ? "ok" : "missing");
@@ -915,18 +667,13 @@ void setupPins() {
   pinMode(Pins::PIR, INPUT);
   pinMode(Pins::WATER, INPUT);
   pinMode(Pins::FLAME, INPUT_PULLUP);
-  pinMode(Pins::RGB, OUTPUT);
   pinMode(Pins::LAMP, OUTPUT);
-  pinMode(Pins::FAN_DIR, OUTPUT);
   pinMode(Pins::MQ2, INPUT);
   pinMode(Pins::LIGHT, INPUT);
   pinMode(Pins::SOUND, INPUT);
-  pinMode(Pins::KEYPAD, INPUT);
 
   analogReadResolution(12);
-  attachPwm(Pins::FAN_PWM, Pwm::FAN_CHANNEL, Pwm::FAN_FREQ, Pwm::FAN_RESOLUTION);
   attachPwm(Pins::BUZZER, Pwm::BUZZER_CHANNEL, Pwm::BUZZER_FREQ, Pwm::BUZZER_RESOLUTION);
-  attachPwm(Pins::SERVO, Pwm::SERVO_CHANNEL, Pwm::SERVO_FREQ, Pwm::SERVO_RESOLUTION);
   setBootSafeOutputs();
   oledBegin();
 }
@@ -944,7 +691,6 @@ void loop() {
   const unsigned long now = millis();
   if (now - lastSensorAt >= SENSOR_INTERVAL_MS) {
     readSensors();
-    processKeypad();
     applyAutomation();
     lastSensorAt = now;
   }

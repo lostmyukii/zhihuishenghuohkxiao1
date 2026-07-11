@@ -15,7 +15,7 @@ Create a professional Chinese infographic following these specifications:
 - The main goal is to show how the primary-school tasks map to the N16R8 project.
 - Keep the visual story clear: task -> sensor -> judgment -> actuator -> OLED/dashboard.
 - Use short, large, legible Chinese labels. Avoid tiny paragraphs.
-- Use real hardware concepts from the design: N16R8 ESP32-S3, light sensor, DHT11, sound sensor, PIR, relay lamp, fan, curtain servo, OLED, Web Serial, MQTT dashboard.
+- Use real hardware concepts from the design: N16R8 ESP32-S3, light sensor, DHT11, sound sensor, PIR, relay lamp, buzzer, OLED, Web Serial, MQTT dashboard.
 - Do not depict fake or impossible wiring. Keep the board and sensors as a small educational model.
 
 ## Layout Guidelines: hub-spoke
@@ -41,7 +41,7 @@ Create a professional Chinese infographic following these specifications:
   - lavender for voice interaction / 语音交互
   - mint green for energy saving / 节能响应
 - Deep charcoal text (#2D2D2D), clear handwritten print style.
-- Add small doodles: lightbulb, thermometer, microphone, human PIR icon, fan, OLED screen, phone dashboard, cloud, MQTT message bubbles.
+- Add small doodles: lightbulb, thermometer, microphone, human PIR icon, buzzer, OLED screen, phone dashboard, cloud, MQTT message bubbles.
 - Include one small student character pointing at the model house.
 - Keep generous whitespace and strong hierarchy.
 
@@ -59,7 +59,7 @@ Subtitle:
 
 Draw a small learning-house model:
 
-- learning room with desk lamp, window curtain, fan
+- learning room with desk lamp, light sensor, sound sensor
 - central control area with OLED and N16R8 board
 - entrance with PIR sensor
 - neat colored wires
@@ -107,12 +107,12 @@ Short subhead:
 Labels:
 
 - "光暗开灯"
-- "温度高开风扇"
+- "温度高提醒"
 - "噪声提醒"
 
 Visual:
 
-if/then arrows: dark light -> lamp on, hot temperature -> fan spins, noisy sound -> small reminder bell.
+if/then arrows: dark light -> lamp on, hot temperature -> OLED/dashboard reminder, noisy sound -> small reminder bell.
 
 ### Spoke 3: 语音交互
 
@@ -149,12 +149,12 @@ Labels:
 
 - "无人"
 - "光照足"
-- "关闭灯/风扇"
+- "关闭学习灯"
 - "节能分"
 
 Visual:
 
-PIR no-person icon, bright sun, lamp/fan off, green energy score badge.
+PIR no-person icon, bright sun, lamp off, green energy score badge.
 
 ### Right Hardware Legend
 
@@ -169,8 +169,6 @@ Compact labels:
 - "声音 GPIO4"
 - "PIR GPIO5"
 - "灯 GPIO48"
-- "风扇 GPIO11"
-- "RGB GPIO47"
 - "OLED 41/42"
 
 Use small colored tag stickers; keep text large enough to read.
@@ -200,7 +198,7 @@ Heading:
 Four mini steps:
 
 1. "采集：遮光 / 拍手 / PIR"
-2. "控制：灯亮 / 风扇转"
+2. "控制：灯亮 / 蜂鸣提醒"
 3. "语音+节能：开启节能"
 4. "同步：网页看板变化"
 

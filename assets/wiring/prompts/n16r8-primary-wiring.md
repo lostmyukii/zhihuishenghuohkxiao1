@@ -14,22 +14,18 @@ Main composition:
    - USB-C cable exits to the right and points to "Chrome/Edge HTTPS Dashboard".
 
 2. Left: small simplified house model with three zones:
-   - "学习房": desk lamp, window curtain, fan, light sensor, sound sensor.
-   - "客厅中控": OLED, 8键AD, N16R8 service area.
-   - "玄关": PIR sensor and small RGB state light.
+   - "学习房": desk lamp, light sensor, sound sensor.
+   - "客厅中控": OLED, N16R8 service area, USB cable to dashboard.
+   - "玄关": PIR sensor and buzzer.
 
 3. Blue sensing wires from house modules to board:
    - "光敏 ADC1 / GPIO1"
    - "DHT11 D14 / GPIO14"
    - "声音 ADC4 / GPIO4"
    - "PIR D5 / GPIO5"
-   - "8键AD ADC3 / GPIO3"
 
 4. Orange actuator wires from board to house modules:
    - "学习灯 GPIO48"
-   - "风扇 PWM D11 / GPIO11"
-   - "舵机窗帘 D9 / GPIO9"
-   - "RGB灯环 GPIO47"
    - "蜂鸣器 D13 / GPIO13"
 
 5. Purple display/communication wires:
@@ -52,6 +48,7 @@ Visual requirements:
 - Make wiring routes clear and color-coded: blue=sensing, orange=actuator, purple=display/communication, red=danger/safety extension.
 - Use large Chinese text labels; avoid tiny text.
 - Keep the exact GPIO labels listed above as much as possible.
+- Do not draw 8键AD, RGB灯带, fan, or servo; this hardware version does not include them.
 - The diagram should not imply that relay or high-power devices are inside the room; keep heavy control in service area.
 - Do not invent unrelated sensors.
 - Do not show 220V wiring.

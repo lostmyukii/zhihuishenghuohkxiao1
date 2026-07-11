@@ -476,38 +476,6 @@ h2 {
   font-size: 26px;
 }
 
-.keypad-readout {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 16px 16px 0;
-}
-
-.keypad-readout article {
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fbfcff;
-}
-
-.keypad-readout span {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 730;
-}
-
-.keypad-readout strong {
-  display: block;
-  margin-top: 8px;
-  overflow-wrap: anywhere;
-  font-family:
-    "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 22px;
-  line-height: 1.1;
-}
-
 .oled-screen {
   display: grid;
   gap: 4px;
@@ -637,8 +605,7 @@ h2 {
   .house-map,
   .metric-grid,
   .mode-grid,
-  .voice-quick-grid,
-  .keypad-readout {
+  .voice-quick-grid {
     grid-template-columns: 1fr;
   }
 

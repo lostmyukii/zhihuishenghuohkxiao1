@@ -32,9 +32,7 @@
     supportNotice: document.querySelector("#supportNotice"),
     modeChip: document.querySelector("#modeChip"),
     ackStatus: document.querySelector("#ackStatus"),
-    thresholdFocus: document.querySelector("#thresholdFocus"),
-    keypadKey: document.querySelector("#keypadKey"),
-    keypadRaw: document.querySelector("#keypadRaw"),
+    thresholdSummary: document.querySelector("#thresholdSummary"),
     oledState: document.querySelector("#oledState"),
     oledLines: document.querySelector("#oledLines"),
     thresholdForm: document.querySelector("#thresholdForm"),
@@ -55,9 +53,6 @@
       sound: document.querySelector("#soundValue"),
       pir: document.querySelector("#pirValue"),
       lamp: document.querySelector("#lampValue"),
-      fan: document.querySelector("#fanValue"),
-      curtain: document.querySelector("#curtainValue"),
-      rgb: document.querySelector("#rgbValue"),
       buzzer: document.querySelector("#buzzerValue"),
     },
   };
@@ -180,9 +175,9 @@
     const display = telemetry?.display || {};
 
     el.modeChip.textContent = telemetry?.mode || "等待模式";
-    el.thresholdFocus.textContent = health.thresholdFocus || "lightThreshold";
-    el.keypadKey.textContent = display.lastKey || health.keypadLastKey || sensors.keypadKey || "NONE";
-    el.keypadRaw.textContent = valueOrWaiting(sensors.keypadRaw);
+    el.thresholdSummary.textContent = telemetry
+      ? `光 ${valueOrWaiting(sensors.light, "%")} / 噪 ${valueOrWaiting(sensors.sound, "%")}`
+      : "等待阈值";
     el.oledState.textContent =
       health.oled === "ready" ? "OLED 已连接" : health.oled === "missing" ? "OLED 未检测" : "等待 OLED";
     el.oledState.dataset.status = health.oled === "ready" ? "ok" : health.oled === "missing" ? "offline" : "idle";
@@ -195,16 +190,13 @@
     el.metrics.pir.textContent = booleanText(sensors.pir, "有人", "无人");
 
     el.metrics.lamp.textContent = booleanText(actuators.lamp, "开启", "关闭");
-    el.metrics.fan.textContent = valueOrWaiting(actuators.fan, "%");
-    el.metrics.curtain.textContent = valueOrWaiting(actuators.curtain, "°");
-    el.metrics.rgb.textContent = actuators.rgb || "等待";
     el.metrics.buzzer.textContent = booleanText(actuators.buzzer, "响铃", "静音");
 
     el.studyRoomState.textContent = telemetry
       ? `光照 ${valueOrWaiting(sensors.light, "%")} / 噪声 ${valueOrWaiting(sensors.sound, "%")}`
       : "等待数据";
     el.livingRoomState.textContent = telemetry
-      ? `温度 ${valueOrWaiting(sensors.temperature, " C")} / 风扇 ${valueOrWaiting(actuators.fan, "%")}`
+      ? `温度 ${valueOrWaiting(sensors.temperature, " C")} / 提醒 ${booleanText(actuators.buzzer, "开启", "静音")}`
       : "等待数据";
     el.entryRoomState.textContent = telemetry
       ? `人体 ${booleanText(sensors.pir, "有人", "无人")} / 告警 ${(telemetry.alerts || []).length}`

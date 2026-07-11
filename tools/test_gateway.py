@@ -26,7 +26,10 @@ class GatewayContractTest(unittest.TestCase):
         hello = board.hello()
         self.assertEqual(hello["profileId"], PROFILE_ID)
         self.assertEqual(hello["pins"]["light"], 1)
-        self.assertEqual(hello["pins"]["rgb"], 47)
+        self.assertNotIn("keypad", hello["pins"])
+        self.assertNotIn("rgb", hello["pins"])
+        self.assertNotIn("fanPwm", hello["pins"])
+        self.assertNotIn("servo", hello["pins"])
 
         ack = board.apply_command({"type": "command", "mode": "energy"})
         self.assertEqual(ack, {"type": "ack", "ok": True, "message": "mode=energy"})
@@ -40,25 +43,24 @@ class GatewayContractTest(unittest.TestCase):
                 "set": {
                     "lightThreshold": 25,
                     "soundThreshold": 70,
-                    "thresholdFocus": "soundThreshold",
                 },
             }
         )
         self.assertTrue(ack["ok"])
         self.assertEqual(board.light_threshold, 25)
         self.assertEqual(board.sound_threshold, 70)
-        self.assertEqual(board.threshold_focus, "soundThreshold")
 
-    def test_mock_board_keypad_and_oled_contract(self):
+    def test_mock_board_oled_contract_uses_minimal_hardware(self):
         board = MockBoardState()
         board.apply_command({"type": "command", "mode": "energy"})
         telemetry = board.telemetry()
 
-        self.assertEqual(telemetry["sensors"]["keypadKey"], "D")
-        self.assertEqual(telemetry["display"]["lastKey"], "D")
-        self.assertEqual(telemetry["display"]["focus"], "lightThreshold")
+        self.assertNotIn("keypadKey", telemetry["sensors"])
+        self.assertNotIn("rgb", telemetry["actuators"])
+        self.assertNotIn("fan", telemetry["actuators"])
+        self.assertNotIn("curtain", telemetry["actuators"])
         self.assertEqual(telemetry["health"]["oled"], "ready")
-        self.assertEqual(telemetry["health"]["keypadLastKey"], "D")
+        self.assertNotIn("keypadLastKey", telemetry["health"])
         self.assertEqual(len(telemetry["display"]["lines"]), 6)
         self.assertIn("MODE:ENERGY", telemetry["display"]["lines"])
 
