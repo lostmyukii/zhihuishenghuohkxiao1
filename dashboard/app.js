@@ -1,6 +1,7 @@
 (function () {
   const FRESH_FRAME_MS = 3500;
   const MAX_LOGS = 18;
+  const MODE_SENSOR_FLASH_MS = 2200;
   const MODE_LABELS = {
     study: "学习模式",
     rest: "休息模式",
@@ -20,11 +21,13 @@
     telemetry: null,
     lastAck: null,
     lastVoiceIntent: null,
+    modeSensorFlashUntil: 0,
     logs: [],
   };
 
   const voiceIntentApi = window.SmartLifeVoiceIntent;
   const energyApi = window.SmartLifeEnergy;
+  const alertApi = window.SmartLifeAlertCore;
 
   const el = {
     serialStatus: document.querySelector("#serialStatus"),
@@ -54,6 +57,13 @@
     lampOffButton: document.querySelector("#lampOffButton"),
     energyScore: document.querySelector("#energyScore"),
     energyReason: document.querySelector("#energyReason"),
+    alertNotice: document.querySelector("#alertNotice"),
+    alertNoticeEyebrow: document.querySelector("#alertNoticeEyebrow"),
+    alertNoticeTitle: document.querySelector("#alertNoticeTitle"),
+    alertNoticeSummary: document.querySelector("#alertNoticeSummary"),
+    alertNoticeItems: document.querySelector("#alertNoticeItems"),
+    alertNoticeActions: document.querySelector("#alertNoticeActions"),
+    sensorCards: [...document.querySelectorAll("[data-sensor-key]")],
     studyRoomState: document.querySelector("#studyRoomState"),
     livingRoomState: document.querySelector("#livingRoomState"),
     entryRoomState: document.querySelector("#entryRoomState"),
@@ -180,6 +190,102 @@
     });
   }
 
+  function readThresholds() {
+    return {
+      lightThreshold: Number(el.thresholdForm.elements.namedItem("lightThreshold")?.value),
+      temperatureThreshold: Number(el.thresholdForm.elements.namedItem("temperatureThreshold")?.value),
+      soundThreshold: Number(el.thresholdForm.elements.namedItem("soundThreshold")?.value),
+    };
+  }
+
+  function renderAlertNotice(presentation) {
+    const eyebrowLabels = {
+      idle: "实时状态",
+      normal: "持续监测",
+      reminder: "普通提醒",
+      alarm: "安全报警",
+    };
+
+    el.alertNotice.className = `alert-notice is-${presentation.state}`;
+    el.alertNoticeEyebrow.textContent = eyebrowLabels[presentation.state] || "实时状态";
+    el.alertNoticeTitle.textContent = presentation.title;
+    el.alertNoticeSummary.textContent = presentation.summary;
+    el.alertNoticeItems.innerHTML = "";
+    el.alertNoticeActions.innerHTML = "";
+
+    presentation.items.forEach((item) => {
+      const row = document.createElement("article");
+      row.className = `alert-reason-item is-${item.severity}`;
+
+      const dot = document.createElement("span");
+      dot.className = "alert-reason-dot";
+      dot.setAttribute("aria-hidden", "true");
+
+      const copy = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = item.title;
+      const reason = document.createElement("p");
+      reason.textContent = item.reason;
+      const source = document.createElement("small");
+      source.textContent = item.source;
+
+      copy.append(title, reason, source);
+      row.append(dot, copy);
+      el.alertNoticeItems.appendChild(row);
+    });
+
+    presentation.actions.forEach((message) => {
+      const action = document.createElement("p");
+      action.textContent = message;
+      el.alertNoticeActions.appendChild(action);
+    });
+  }
+
+  function renderSensorStates(telemetry, sensors, actuators, activeMode) {
+    const fresh = Boolean(telemetry);
+    const activeSensors = new Set(alertApi ? alertApi.sensorsForMode(activeMode) : []);
+    const presentation = alertApi
+      ? alertApi.buildPresentation(telemetry?.alerts || [], {
+          fresh,
+          mode: activeMode,
+          sensors,
+          actuators,
+          thresholds: readThresholds(),
+        })
+      : {
+          state: fresh ? "normal" : "idle",
+          title: fresh ? "当前无报警或提醒" : "等待实时数据",
+          summary: fresh ? "核心传感器持续监测" : "连接开发板后显示报警与提醒原因",
+          items: [],
+          actions: [],
+          sensorStates: {},
+        };
+    const flashActive = Date.now() < state.modeSensorFlashUntil;
+
+    el.sensorCards.forEach((card) => {
+      const sensorKey = card.dataset.sensorKey;
+      const severity = presentation.sensorStates[sensorKey] || "";
+      const modeActive = fresh && activeSensors.has(sensorKey);
+      const badge = card.querySelector(".sensor-state-badge");
+      const label = card.querySelector(".sensor-card-label")?.textContent || sensorKey;
+
+      card.classList.toggle("is-mode-active", modeActive);
+      card.classList.toggle("is-mode-flash", modeActive && flashActive && !severity);
+      card.classList.toggle("is-reminder", severity === "reminder");
+      card.classList.toggle("is-alarm", severity === "alarm");
+
+      let statusText = fresh ? "持续监测" : "等待实时数据";
+      if (modeActive) statusText = "本模式工作中";
+      if (severity === "reminder") statusText = "正在提醒";
+      if (severity === "alarm") statusText = "正在报警";
+      badge.textContent = statusText;
+      card.setAttribute("aria-label", `${label}：${statusText}`);
+    });
+
+    renderAlertNotice(presentation);
+    return presentation;
+  }
+
   function renderTelemetry() {
     const telemetry = isFreshOnline() ? state.telemetry : null;
     const sensors = telemetry?.sensors || {};
@@ -212,6 +318,8 @@
     el.metrics.lamp.textContent = booleanText(actuators.lamp, "开启", "关闭");
     el.metrics.buzzer.textContent = booleanText(actuators.buzzer, "响铃", "静音");
 
+    const alertPresentation = renderSensorStates(telemetry, sensors, actuators, activeMode);
+
     const freshEnergy = telemetry?.energy || null;
     el.energyScore.textContent = freshEnergy && energyApi
       ? energyApi.formatEnergyScore(freshEnergy.score)
@@ -227,7 +335,7 @@
       ? `温度 ${valueOrWaiting(sensors.temperature, " C")} / 提醒 ${booleanText(actuators.buzzer, "开启", "静音")}`
       : "等待数据";
     el.entryRoomState.textContent = telemetry
-      ? `人体 ${booleanText(sensors.pir, "有人", "无人")} / 告警 ${(telemetry.alerts || []).length}`
+      ? `人体 ${booleanText(sensors.pir, "有人", "无人")} / ${alertPresentation.title}`
       : "等待数据";
   }
 
@@ -273,6 +381,10 @@
       state.hello = frame;
       addLog("hello", `收到 hello: ${frame.profileId || frame.board || "n16r8"}`);
     } else if (frame.type === "telemetry") {
+      const previousMode = state.telemetry?.mode || null;
+      if (previousMode && frame.mode && previousMode !== frame.mode) {
+        state.modeSensorFlashUntil = Date.now() + MODE_SENSOR_FLASH_MS;
+      }
       state.telemetry = frame;
     } else if (frame.type === "ack") {
       state.lastAck = frame;
@@ -340,6 +452,8 @@
       state.reader = state.port.readable.getReader();
       state.writer = state.port.writable.getWriter();
       state.connected = true;
+      state.telemetry = null;
+      state.modeSensorFlashUntil = 0;
       state.readBuffer = "";
       addLog("frame", "串口已打开，等待 hello");
       render();
@@ -380,6 +494,8 @@
     state.port = null;
     state.reader = null;
     state.writer = null;
+    state.telemetry = null;
+    state.modeSensorFlashUntil = 0;
     if (showLog) addLog("frame", "串口已断开");
     render();
   }
