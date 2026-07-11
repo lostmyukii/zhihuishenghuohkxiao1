@@ -644,7 +644,7 @@ void emitTelemetry() {
   Serial.print(oledReady ? "ready" : "missing");
   Serial.print("\",\"dht\":\"");
   Serial.print(sensors.dhtValid ? "ok" : "missing");
-  Serial.print("\"}}");
+  Serial.print("\",\"buzzerEnabled\":true,\"relaySafety\":\"lowVoltageOnly\"}");
   Serial.println("}");
 }
 
