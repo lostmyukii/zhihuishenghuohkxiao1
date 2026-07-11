@@ -11,10 +11,10 @@
 公网入口：
 
 ```text
-https://zhinengshenghuo.ilelezhan.cn/smartlife-primary/
+https://hongkongxiao.ilelezhan.cn/
 ```
 
-不修改初中站点首页，不复用初中服务端口，不停止服务器上的其他系统。
+该域名的 A 记录已解析到 `82.156.146.105`。使用独立 Nginx server block 和独立 HTTPS 证书，不修改初中站点域名、首页和路由，不复用初中服务端口，不停止服务器上的其他系统。
 
 ## 2. 服务器审计结论
 
@@ -63,7 +63,7 @@ N16R8 实板
 | Dashboard 静态服务 | `127.0.0.1:19267` |
 | WSS Relay 后端 | `127.0.0.1:19266` |
 | MQTT Broker | `127.0.0.1:19283` |
-| 公网页面 | `/smartlife-primary/` |
+| 公网页面 | `https://hongkongxiao.ilelezhan.cn/` |
 | 公网 WSS | `/smartlife-primary-ws` |
 | MQTT topic | `smartlife/primary/n16r8/#` |
 
@@ -114,10 +114,10 @@ smartlife-primary-relay.service
 smartlife-primary-mqtt.service
 ```
 
-Nginx 只在 `zhinengshenghuo.ilelezhan.cn` 现有 server block 中新增：
+Nginx 新增独立的 `hongkongxiao.ilelezhan.cn` server block，现有域名配置不做修改：
 
 ```text
-/smartlife-primary/    -> http://127.0.0.1:19267/
+/                         -> http://127.0.0.1:19267/
 /smartlife-primary-ws  -> http://127.0.0.1:19266
 ```
 
@@ -127,9 +127,10 @@ Nginx 只在 `zhinengshenghuo.ilelezhan.cn` 现有 server block 中新增：
 2. 上传到新的 `/home/ubuntu/smartlife-primary`，不覆盖初中目录。
 3. 写入独立 MQTT 配置、环境文件和 systemd unit。
 4. 启动三个小学服务，先用 localhost 探测。
-5. 新增 Nginx 路由，执行 `nginx -t`。
-6. 只执行 `systemctl reload nginx`，不重启 Nginx。
-7. 任一步失败时停止小学新服务并恢复备份，不操作现有初中服务。
+5. 新增新域名的 HTTP/ACME server block，执行 `nginx -t` 后 reload。
+6. 为 `hongkongxiao.ilelezhan.cn` 签发独立 Let's Encrypt 证书，再启用 HTTPS/WSS。
+7. 再次执行 `nginx -t`，只执行 `systemctl reload nginx`，不重启 Nginx。
+8. 任一步失败时停止小学新服务并恢复新增配置，不操作现有初中服务。
 
 ## 8. 跨平台验收
 
