@@ -2,6 +2,7 @@
   const FRESH_FRAME_MS = 3500;
   const MAX_LOGS = 18;
   const MODE_SENSOR_FLASH_MS = 2200;
+  const CLOUD_RECONNECT_MS = 1800;
   const MODE_LABELS = {
     study: "学习模式",
     rest: "休息模式",
@@ -22,15 +23,24 @@
     lastAck: null,
     lastVoiceIntent: null,
     modeSensorFlashUntil: 0,
+    cloudSocket: null,
+    cloudConnected: false,
+    cloudReconnectTimer: null,
+    clientId: "",
+    frameSource: "",
     logs: [],
   };
 
   const voiceIntentApi = window.SmartLifeVoiceIntent;
   const energyApi = window.SmartLifeEnergy;
   const alertApi = window.SmartLifeAlertCore;
+  const cloudApi = window.SmartLifeCloudCore;
+  const cloudEndpoint = cloudApi?.defaultEndpoint(window.location, window.location.search) || "";
+  state.clientId = cloudApi?.clientId(() => window.crypto?.randomUUID?.()) || `primary-${Date.now()}`;
 
   const el = {
     serialStatus: document.querySelector("#serialStatus"),
+    cloudStatus: document.querySelector("#cloudStatus"),
     boardStatus: document.querySelector("#boardStatus"),
     frameStatus: document.querySelector("#frameStatus"),
     baudRate: document.querySelector("#baudRate"),
@@ -83,7 +93,11 @@
   }
 
   function isFreshOnline() {
-    return state.connected && state.lastFrameAt > 0 && Date.now() - state.lastFrameAt <= FRESH_FRAME_MS;
+    return state.lastFrameAt > 0 && Date.now() - state.lastFrameAt <= FRESH_FRAME_MS;
+  }
+
+  function cloudOpen() {
+    return Boolean(state.cloudSocket && state.cloudSocket.readyState === WebSocket.OPEN);
   }
 
   function formatTime(timestamp) {
@@ -140,25 +154,31 @@
   }
 
   function updateCommandButtons() {
+    const commandReady = state.connected || (cloudOpen() && isFreshOnline());
     document.querySelectorAll("[data-mode]").forEach((button) => {
-      button.disabled = !state.connected;
+      button.disabled = !commandReady;
     });
     el.thresholdForm.querySelectorAll("button, input").forEach((control) => {
-      control.disabled = !state.connected;
+      control.disabled = !commandReady;
     });
     el.voiceForm.querySelectorAll("button, input").forEach((control) => {
-      control.disabled = !state.connected;
+      control.disabled = !commandReady;
     });
     el.voiceQuickGrid.querySelectorAll("button").forEach((button) => {
-      button.disabled = !state.connected;
+      button.disabled = !commandReady;
     });
-    el.lampOnButton.disabled = !state.connected;
-    el.lampOffButton.disabled = !state.connected;
+    el.lampOnButton.disabled = !commandReady;
+    el.lampOffButton.disabled = !commandReady;
   }
 
   function renderStatus() {
     const fresh = isFreshOnline();
     setPill(el.serialStatus, state.connected ? "串口已连接" : "串口未连接", state.connected ? "ok" : "idle");
+    setPill(
+      el.cloudStatus,
+      cloudOpen() ? "云端已连接" : cloudEndpoint ? "云端重连中" : "本地模式",
+      cloudOpen() ? "ok" : "idle",
+    );
     setPill(el.boardStatus, fresh ? "开发板在线" : "开发板离线", fresh ? "ok" : "offline");
     setPill(el.frameStatus, `${state.frameCount} 帧`, state.frameCount > 0 ? "ok" : "idle");
 
@@ -373,9 +393,10 @@
     renderVoiceIntent();
   }
 
-  function handleFrame(frame) {
+  function handleFrame(frame, source = "serial") {
     state.frameCount += 1;
     state.lastFrameAt = Date.now();
+    state.frameSource = source;
 
     if (frame.type === "hello") {
       state.hello = frame;
@@ -410,10 +431,106 @@
       return;
     }
     try {
-      handleFrame(JSON.parse(text));
+      const frame = JSON.parse(text);
+      handleFrame(frame, "serial");
+      sendBoardFrameToCloud(frame);
     } catch (error) {
       addLog("error", `JSON 解析失败: ${error.message}`);
     }
+  }
+
+  function sendCloudPayload(payload, origin = "dashboard") {
+    if (!cloudOpen() || !cloudApi) return false;
+    const outgoing = cloudApi.decoratePayload(payload, state.clientId, origin);
+    state.cloudSocket.send(JSON.stringify(outgoing));
+    return true;
+  }
+
+  function sendBoardFrameToCloud(frame) {
+    if (!cloudApi || cloudApi.classifyPayload(frame) !== "board") return false;
+    return sendCloudPayload(frame, "web-serial-gateway");
+  }
+
+  async function writeSerialPayload(payload) {
+    if (!state.connected || !state.writer || !cloudApi) return false;
+    const serialPayload = cloudApi.stripTransportMeta(payload);
+    await state.writer.write(new TextEncoder().encode(`${JSON.stringify(serialPayload)}\n`));
+    return true;
+  }
+
+  function scheduleCloudReconnect() {
+    if (!cloudEndpoint || state.cloudReconnectTimer) return;
+    state.cloudReconnectTimer = window.setTimeout(() => {
+      state.cloudReconnectTimer = null;
+      connectCloud();
+    }, CLOUD_RECONNECT_MS);
+  }
+
+  function handleCloudPayload(payload) {
+    if (!cloudApi || cloudApi.shouldIgnore(payload, state.clientId)) return;
+    const kind = cloudApi.classifyPayload(payload);
+
+    if (kind === "board") {
+      handleFrame(payload, "cloud");
+      return;
+    }
+
+    if (kind === "command" && state.connected) {
+      writeSerialPayload(payload)
+        .then((written) => {
+          if (written) addLog("command", "云端命令已写入 USB");
+        })
+        .catch((error) => addLog("error", `云端命令写入失败: ${error.message}`));
+      return;
+    }
+
+    if (kind === "status") {
+      state.cloudConnected = payload.mqtt !== "offline";
+      render();
+    }
+  }
+
+  function connectCloud() {
+    if (!cloudEndpoint || !cloudApi) return;
+    if (state.cloudSocket && [WebSocket.CONNECTING, WebSocket.OPEN].includes(state.cloudSocket.readyState)) return;
+
+    let socket;
+    try {
+      socket = new WebSocket(cloudEndpoint);
+    } catch (error) {
+      addLog("error", `云端连接失败: ${error.message}`);
+      scheduleCloudReconnect();
+      return;
+    }
+
+    state.cloudSocket = socket;
+    socket.addEventListener("open", () => {
+      state.cloudConnected = true;
+      sendCloudPayload({ type: "ping" });
+      addLog("frame", "云端 WSS 已连接");
+      render();
+    });
+
+    socket.addEventListener("message", (event) => {
+      try {
+        handleCloudPayload(JSON.parse(event.data));
+      } catch (error) {
+        addLog("error", "忽略非 JSON 云端数据");
+      }
+    });
+
+    socket.addEventListener("close", () => {
+      if (state.cloudSocket === socket) state.cloudSocket = null;
+      state.cloudConnected = false;
+      addLog("error", "云端 WSS 已断开，正在重连");
+      render();
+      scheduleCloudReconnect();
+    });
+
+    socket.addEventListener("error", () => {
+      state.cloudConnected = false;
+      render();
+    });
   }
 
   async function readLoop() {
@@ -453,6 +570,8 @@
       state.writer = state.port.writable.getWriter();
       state.connected = true;
       state.telemetry = null;
+      state.lastFrameAt = 0;
+      state.frameSource = "";
       state.modeSensorFlashUntil = 0;
       state.readBuffer = "";
       addLog("frame", "串口已打开，等待 hello");
@@ -494,26 +613,37 @@
     state.port = null;
     state.reader = null;
     state.writer = null;
-    state.telemetry = null;
+    if (state.frameSource === "serial") {
+      state.telemetry = null;
+      state.lastFrameAt = 0;
+      state.frameSource = "";
+    }
     state.modeSensorFlashUntil = 0;
     if (showLog) addLog("frame", "串口已断开");
     render();
   }
 
   async function sendCommand(command) {
-    if (!state.connected || !state.writer) {
-      addLog("error", "未连接串口，命令未发送");
+    let deliveredToUsb = false;
+    try {
+      deliveredToUsb = await writeSerialPayload(command);
+    } catch (error) {
+      addLog("error", `USB 发送失败: ${error.message}`);
+    }
+
+    const deliveredToCloud = sendCloudPayload(
+      deliveredToUsb ? { ...command, usbWritten: true } : command,
+      deliveredToUsb ? "web-serial-gateway" : "dashboard",
+    );
+
+    if (!deliveredToUsb && !deliveredToCloud) {
+      addLog("error", "串口和云端均未连接，命令未发送");
       render();
       return;
     }
 
-    try {
-      const payload = `${JSON.stringify(command)}\n`;
-      await state.writer.write(new TextEncoder().encode(payload));
-      addLog("command", `发送 ${command.type}${command.mode ? `:${command.mode}` : ""}`);
-    } catch (error) {
-      addLog("error", `发送失败: ${error.message}`);
-    }
+    const route = deliveredToUsb ? "USB" : "云端";
+    addLog("command", `${route} 发送 ${command.type}${command.mode ? `:${command.mode}` : ""}`);
   }
 
   async function submitVoiceText(text) {
@@ -603,5 +733,6 @@
   bindEvents();
   renderLog();
   render();
+  connectCloud();
   window.setInterval(render, 1000);
 })();

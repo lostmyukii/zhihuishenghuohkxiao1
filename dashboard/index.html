@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#edf5fb" />
     <title>N16R8 智慧低碳学习小屋</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./style.css?v=20260712-ios-mode-alerts" />
+    <link rel="stylesheet" href="./style.css?v=20260712-primary-cloud-v1" />
   </head>
   <body>
     <header class="topbar">
@@ -16,6 +16,7 @@
       </div>
       <div class="status-row" aria-label="连接状态">
         <span class="status-pill" id="serialStatus">串口未连接</span>
+        <span class="status-pill" id="cloudStatus">云端离线</span>
         <span class="status-pill" id="boardStatus">开发板离线</span>
         <span class="status-pill" id="frameStatus">0 帧</span>
         <span class="mode-chip" id="modeChip">等待模式</span>
@@ -316,6 +317,7 @@
     <script src="./intent-core.js?v=20260711-minimal-hardware"></script>
     <script src="./energy-core.js?v=20260712-energy-status"></script>
     <script src="./alert-core.js?v=20260712-ios-mode-alerts"></script>
-    <script src="./app.js?v=20260712-ios-mode-alerts"></script>
+    <script src="./cloud-core.js?v=20260712-primary-cloud-v1"></script>
+    <script src="./app.js?v=20260712-primary-cloud-v1"></script>
   </body>
 </html>

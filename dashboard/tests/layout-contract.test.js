@@ -13,6 +13,7 @@ assert.equal(new Set(ids).size, ids.length, "Dashboard IDs must be unique");
 
 const requiredIds = [
   "serialStatus",
+  "cloudStatus",
   "boardStatus",
   "frameStatus",
   "modeChip",
@@ -47,10 +48,12 @@ requiredIds.forEach((id) => {
 assert.match(html, /class="dashboard-columns"/);
 assert.match(html, /class="dashboard-left"/);
 assert.match(html, /class="student-console"/);
-assert.match(html, /style\.css\?v=20260712-ios-mode-alerts/);
+assert.match(html, /style\.css\?v=20260712-primary-cloud-v1/);
 assert.match(html, /alert-core\.js\?v=20260712-ios-mode-alerts/);
-assert.match(html, /app\.js\?v=20260712-ios-mode-alerts/);
+assert.match(html, /cloud-core\.js\?v=20260712-primary-cloud-v1/);
+assert.match(html, /app\.js\?v=20260712-primary-cloud-v1/);
 assert.equal(html.indexOf("alert-core.js") < html.indexOf("app.js"), true, "alert-core.js must load before app.js");
+assert.equal(html.indexOf("cloud-core.js") < html.indexOf("app.js"), true, "cloud-core.js must load before app.js");
 assert.doesNotMatch(html, /风扇|RGB|舵机|8键AD/);
 
 const sensorKeys = [...html.matchAll(/\bdata-sensor-key="([^"]+)"/g)].map((match) => match[1]);
