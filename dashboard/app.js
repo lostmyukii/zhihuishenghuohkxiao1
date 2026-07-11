@@ -1,6 +1,12 @@
 (function () {
   const FRESH_FRAME_MS = 3500;
   const MAX_LOGS = 18;
+  const MODE_LABELS = {
+    study: "学习模式",
+    rest: "休息模式",
+    away: "离家模式",
+    energy: "节能模式",
+  };
 
   const state = {
     port: null,
@@ -175,13 +181,20 @@
   }
 
   function renderTelemetry() {
-    const telemetry = state.telemetry;
+    const telemetry = isFreshOnline() ? state.telemetry : null;
     const sensors = telemetry?.sensors || {};
     const actuators = telemetry?.actuators || {};
     const health = telemetry?.health || {};
     const display = telemetry?.display || {};
 
-    el.modeChip.textContent = telemetry?.mode || "等待模式";
+    const activeMode = telemetry?.mode || null;
+    el.modeChip.textContent = activeMode ? MODE_LABELS[activeMode] || activeMode : "等待模式";
+    el.modeChip.dataset.status = activeMode ? "active" : "idle";
+    document.querySelectorAll("[data-mode]").forEach((button) => {
+      const isActive = activeMode === button.dataset.mode;
+      button.dataset.active = String(isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
     el.thresholdSummary.textContent = telemetry
       ? `光 ${valueOrWaiting(sensors.light, "%")} / 噪 ${valueOrWaiting(sensors.sound, "%")}`
       : "等待阈值";
@@ -199,7 +212,7 @@
     el.metrics.lamp.textContent = booleanText(actuators.lamp, "开启", "关闭");
     el.metrics.buzzer.textContent = booleanText(actuators.buzzer, "响铃", "静音");
 
-    const freshEnergy = isFreshOnline() ? telemetry?.energy : null;
+    const freshEnergy = telemetry?.energy || null;
     el.energyScore.textContent = freshEnergy && energyApi
       ? energyApi.formatEnergyScore(freshEnergy.score)
       : "等待实时数据";
