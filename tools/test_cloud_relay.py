@@ -6,12 +6,23 @@ import unittest
 from n16r8_cloud_relay import (
     PROJECT,
     browser_frame_from_mqtt,
+    mqtt_connect_succeeded,
     mqtt_route_for_frame,
     normalize_frame,
 )
 
 
 class CloudRelayContractTests(unittest.TestCase):
+    def test_paho_v2_reason_code_compatibility(self):
+        class ReasonCode:
+            def __init__(self, is_failure):
+                self.is_failure = is_failure
+
+        self.assertTrue(mqtt_connect_succeeded(ReasonCode(False)))
+        self.assertFalse(mqtt_connect_succeeded(ReasonCode(True)))
+        self.assertTrue(mqtt_connect_succeeded(0))
+        self.assertFalse(mqtt_connect_succeeded(5))
+
     def test_normalize_accepts_only_primary_protocol(self):
         self.assertEqual(normalize_frame({"type": "telemetry"})["project"], PROJECT)
         self.assertIsNone(normalize_frame({"type": "demo"}))

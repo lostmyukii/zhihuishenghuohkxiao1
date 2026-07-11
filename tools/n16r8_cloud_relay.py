@@ -25,6 +25,16 @@ ALLOWED_TYPES = BOARD_FRAME_TYPES | COMMAND_TYPES | {"ping"}
 RETAINED_TYPES = {"hello", "telemetry", "health"}
 
 
+def mqtt_connect_succeeded(reason_code: Any) -> bool:
+    is_failure = getattr(reason_code, "is_failure", None)
+    if isinstance(is_failure, bool):
+        return not is_failure
+    try:
+        return int(reason_code) == 0
+    except (TypeError, ValueError):
+        return str(reason_code).strip().lower() == "success"
+
+
 def normalize_frame(frame: Any) -> Optional[Dict[str, Any]]:
     if not isinstance(frame, dict) or frame.get("type") not in ALLOWED_TYPES:
         return None
@@ -91,7 +101,7 @@ class MqttBridge:
         asyncio.run_coroutine_threadsafe(self.relay.broadcast_json(self.status_payload()), self.loop)
 
     def _on_connect(self, client, userdata, flags, reason_code, properties) -> None:
-        self.connected = int(reason_code) == 0
+        self.connected = mqtt_connect_succeeded(reason_code)
         if self.connected:
             client.subscribe(f"{self.args.topic_prefix.rstrip('/')}/#")
         self._broadcast_status()
