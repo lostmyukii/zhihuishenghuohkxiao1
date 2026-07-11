@@ -26,6 +26,7 @@ class GatewayContractTest(unittest.TestCase):
         hello = board.hello()
         self.assertEqual(hello["profileId"], PROFILE_ID)
         self.assertEqual(hello["pins"]["light"], 1)
+        self.assertEqual(hello["pins"]["lamp"], 12)
         self.assertNotIn("keypad", hello["pins"])
         self.assertNotIn("rgb", hello["pins"])
         self.assertNotIn("fanPwm", hello["pins"])

@@ -20,7 +20,7 @@ constexpr uint8_t BUZZER = 13;
 constexpr uint8_t DHT = 14;
 constexpr uint8_t OLED_SDA = 41;
 constexpr uint8_t OLED_SCL = 42;
-constexpr uint8_t LAMP = 48;
+constexpr uint8_t LAMP = 12;
 }  // namespace Pins
 
 namespace Pwm {
@@ -542,7 +542,7 @@ void emitHello() {
   Serial.print(FIRMWARE_VERSION);
   Serial.print("\",\"deviceName\":\"N16R8 SmartLife Primary Study Home\",\"baud\":115200");
   Serial.print(",\"capabilities\":[\"webSerial\",\"mqttBridge\",\"dashboard\",\"voiceIntent\",\"energyScore\"]");
-  Serial.print(",\"pins\":{\"light\":1,\"sound\":4,\"dht\":14,\"pir\":5,\"lamp\":48");
+  Serial.print(",\"pins\":{\"light\":1,\"sound\":4,\"dht\":14,\"pir\":5,\"lamp\":12");
   Serial.print(",\"buzzer\":13,\"oledSda\":41,\"oledScl\":42}");
   Serial.println("}");
 }

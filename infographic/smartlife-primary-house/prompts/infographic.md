@@ -168,7 +168,7 @@ Compact labels:
 - "DHT11 GPIO14"
 - "声音 GPIO4"
 - "PIR GPIO5"
-- "灯 GPIO48"
+- "灯 D12/GPIO12"
 - "OLED 41/42"
 
 Use small colored tag stickers; keep text large enough to read.

@@ -60,7 +60,7 @@ N16R8 扩展板使用白色 `G-V-S` 插槽：
 | 感知 | DHT11 温湿度 | `D14 / GPIO14` | 温度阈值、舒适判断、OLED/网页提示 | 必选 |
 | 感知 | 声音传感器 | `ADC4 / GPIO4` | 学习环境噪声提醒 | 建议 |
 | 感知 | PIR 人体红外 | `D5 / GPIO5` | 有人/无人、节能响应、离家演示 | 必选 |
-| 执行 | 继电器/学习灯 | `GPIO48` | 学习灯开关或低压灯带 | 必选 |
+| 执行 | 继电器/学习灯 | `D12 / GPIO12` | 学习灯开关或低压灯带，按当前实板照片替代原 `GPIO48` | 必选 |
 | 执行 | 无源蜂鸣器 | `D13 / GPIO13` | 噪声/异常短提醒 | 建议 |
 | 显示 | OLED | `SDA=GPIO41, SCL=GPIO42` | 本地数据显示与模式反馈 | 必选 |
 | 安全扩展 | MQ-2 烟雾/燃气 | `ADC2 / GPIO2` | 厨房安全扩展 | 可选 |
@@ -72,7 +72,7 @@ N16R8 扩展板使用白色 `G-V-S` 插槽：
 
 - 当前没有 8 键 AD 键盘，模式切换由网页按钮和语音白名单完成，阈值调整由网页阈值表单完成。
 - 当前没有 RGB 灯带、风扇和舵机，模式状态由 OLED、网页、学习灯和蜂鸣器表达。
-- 初中项目中曾出现 `GPIO46 / GPIO12 / GPIO45` 等映射；本项目不再声明 RGB 引脚，继电器保持 `GPIO48`，火焰扩展保持 `D6/GPIO6`。
+- 初中项目中曾出现 `GPIO46 / GPIO12 / GPIO45` 等映射；本项目不再声明 RGB 引脚。当前实板未找到可用 `GPIO48` 白色接口，继电器/学习灯改用 `D12/GPIO12`，火焰扩展保持 `D6/GPIO6`。
 - 本方案按小学目录中的 N16R8 文档写入。若更换实板批次，必须先用单模块例程复核丝印和端口。
 
 ### 2.3 安全约束
@@ -219,7 +219,7 @@ smartlife/primary/n16r8/voiceIntent
 启动 `hello` 示例：
 
 ```json
-{"type":"hello","project":"smartlife-primary","board":"n16r8_esp32s3","profileId":"smartlife-primary-study-home-v1","firmware":"0.1.0","deviceName":"N16R8 智慧低碳学习小屋","baud":115200,"capabilities":["webSerial","mqttBridge","dashboard","voiceIntent","energyScore"],"pins":{"light":1,"sound":4,"dht":14,"pir":5,"lamp":48,"buzzer":13,"oledSda":41,"oledScl":42}}
+{"type":"hello","project":"smartlife-primary","board":"n16r8_esp32s3","profileId":"smartlife-primary-study-home-v1","firmware":"0.1.0","deviceName":"N16R8 智慧低碳学习小屋","baud":115200,"capabilities":["webSerial","mqttBridge","dashboard","voiceIntent","energyScore"],"pins":{"light":1,"sound":4,"dht":14,"pir":5,"lamp":12,"buzzer":13,"oledSda":41,"oledScl":42}}
 ```
 
 遥测 `telemetry` 示例：

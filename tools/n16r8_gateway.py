@@ -75,7 +75,7 @@ class MockBoardState:
                 "sound": 4,
                 "dht": 14,
                 "pir": 5,
-                "lamp": 48,
+                "lamp": 12,
                 "buzzer": 13,
                 "oledSda": 41,
                 "oledScl": 42,

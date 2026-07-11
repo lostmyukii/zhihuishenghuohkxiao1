@@ -25,7 +25,7 @@ Main composition:
    - "PIR D5 / GPIO5"
 
 4. Orange actuator wires from board to house modules:
-   - "学习灯 GPIO48"
+   - "学习灯 D12 / GPIO12"
    - "蜂鸣器 D13 / GPIO13"
 
 5. Purple display/communication wires:
@@ -48,7 +48,7 @@ Visual requirements:
 - Make wiring routes clear and color-coded: blue=sensing, orange=actuator, purple=display/communication, red=danger/safety extension.
 - Use large Chinese text labels; avoid tiny text.
 - Keep the exact GPIO labels listed above as much as possible.
-- Do not draw 8键AD, RGB灯带, fan, or servo; this hardware version does not include them.
+- Do not draw 8键AD, RGB灯带, fan, or servo; this hardware version does not include them. GPIO12 is used for the learning lamp relay, not for a fan.
 - The diagram should not imply that relay or high-power devices are inside the room; keep heavy control in service area.
 - Do not invent unrelated sensors.
 - Do not show 220V wiring.

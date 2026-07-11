@@ -44,7 +44,7 @@ After viewing this infographic, the viewer should understand:
 - "感知 | DHT11 温湿度 | `D14 / GPIO14`"
 - "感知 | 声音传感器 | `ADC4 / GPIO4`"
 - "感知 | PIR 人体红外 | `D5 / GPIO5`"
-- "执行 | 继电器/学习灯 | `GPIO48`"
+- "执行 | 继电器/学习灯 | `D12 / GPIO12`"
 - "执行 | 无源蜂鸣器 | `D13 / GPIO13`"
 - "显示 | OLED | `SDA=GPIO41, SCL=GPIO42`"
 - "小学规则主线：数据采集 -> 智能控制 -> 语音交互 -> 节能响应"
