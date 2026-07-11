@@ -18,6 +18,7 @@
   };
 
   const voiceIntentApi = window.SmartLifeVoiceIntent;
+  const energyApi = window.SmartLifeEnergy;
 
   const el = {
     serialStatus: document.querySelector("#serialStatus"),
@@ -45,6 +46,8 @@
     voiceResult: document.querySelector("#voiceResult"),
     lampOnButton: document.querySelector("#lampOnButton"),
     lampOffButton: document.querySelector("#lampOffButton"),
+    energyScore: document.querySelector("#energyScore"),
+    energyReason: document.querySelector("#energyReason"),
     studyRoomState: document.querySelector("#studyRoomState"),
     livingRoomState: document.querySelector("#livingRoomState"),
     entryRoomState: document.querySelector("#entryRoomState"),
@@ -195,6 +198,14 @@
 
     el.metrics.lamp.textContent = booleanText(actuators.lamp, "开启", "关闭");
     el.metrics.buzzer.textContent = booleanText(actuators.buzzer, "响铃", "静音");
+
+    const freshEnergy = isFreshOnline() ? telemetry?.energy : null;
+    el.energyScore.textContent = freshEnergy && energyApi
+      ? energyApi.formatEnergyScore(freshEnergy.score)
+      : "等待实时数据";
+    el.energyReason.textContent = freshEnergy && energyApi
+      ? energyApi.describeEnergyReason(freshEnergy.reason)
+      : "等待实时数据";
 
     el.studyRoomState.textContent = telemetry
       ? `光照 ${valueOrWaiting(sensors.light, "%")} / 噪声 ${valueOrWaiting(sensors.sound, "%")}`

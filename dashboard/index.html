@@ -209,6 +209,17 @@
           </article>
         </div>
 
+        <dl class="energy-summary" aria-label="实时节能状态">
+          <div>
+            <dt>节能分</dt>
+            <dd id="energyScore">等待实时数据</dd>
+          </div>
+          <div>
+            <dt>节能原因</dt>
+            <dd id="energyReason">等待实时数据</dd>
+          </div>
+        </dl>
+
         <div class="actuator-actions" aria-label="学习灯手动控制">
           <button class="secondary-action" id="lampOnButton" type="button" disabled>打开学习灯</button>
           <button class="secondary-action" id="lampOffButton" type="button" disabled>关闭学习灯</button>
@@ -228,6 +239,7 @@
     </main>
 
     <script src="./intent-core.js?v=20260711-minimal-hardware"></script>
-    <script src="./app.js?v=20260711-webserial-lamp"></script>
+    <script src="./energy-core.js?v=20260712-energy-status"></script>
+    <script src="./app.js?v=20260712-energy-status"></script>
   </body>
 </html>

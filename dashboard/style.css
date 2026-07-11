@@ -220,6 +220,36 @@ h2 {
   padding: 0 16px;
 }
 
+.energy-summary {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0 16px 16px;
+}
+
+.energy-summary div {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.energy-summary dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 730;
+}
+
+.energy-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 760;
+  line-height: 1.45;
+}
+
 .primary-action {
   border-color: var(--teal);
   background: var(--teal);
