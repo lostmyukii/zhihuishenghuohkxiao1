@@ -78,6 +78,18 @@ N16R8 USB -> HTTPS Dashboard Web Serial -> WSS Cloud Relay -> MQTT Broker -> 其
 - Safari/iPhone 可观看 Dashboard，但不作为 USB 直连网关。
 - 若改 JS，要同步更新 `dashboard/index.html` 的脚本版本和 `dashboard/sw.js` 的缓存名。
 
+当前公网部署：
+
+| 资源 | 地址 |
+| --- | --- |
+| Dashboard | `https://hongkongxiao.ilelezhan.cn/` |
+| WSS | `wss://hongkongxiao.ilelezhan.cn/smartlife-primary-ws` |
+| 静态服务 | `127.0.0.1:19267` |
+| Relay | `127.0.0.1:19266` |
+| MQTT | `127.0.0.1:19283` |
+
+服务器目录为 `/home/ubuntu/smartlife-primary`，systemd 服务名以 `smartlife-primary-` 开头。不得修改或重启现有 `smartlife-junior-*` 服务。
+
 小学组 MQTT topic 前缀：
 
 ```text

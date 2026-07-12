@@ -2,7 +2,7 @@
 
 日期：2026-07-12
 
-状态：部署方案已确认，等待文档确认后实施
+状态：已部署，macOS 实板与远端双向链路通过；Windows 实板待现场确认
 
 ## 1. 目标
 
@@ -190,3 +190,12 @@ WSS 握手成功，真实 USB 帧可以到达第二客户端
 - 不修改初中站点文件、初中 MQTT topic 或初中 systemd unit。
 - 不开放 `19266/19267/19283` 的公网直连；所有浏览器访问走现有 HTTPS/WSS。
 - 部署完成后建议更换本次在对话中提供过的服务器登录密码。
+
+## 11. 部署结果
+
+- 公网地址 `https://hongkongxiao.ilelezhan.cn/` 已上线，HTTPS 证书有效并自动续期。
+- `smartlife-primary-web`、`smartlife-primary-relay`、`smartlife-primary-mqtt` 均为 active，端口仅监听 `127.0.0.1`。
+- 初中 `smartlife-junior-*` 四个服务在部署前后均为 active，未被重启。
+- 公网静态文件 SHA-256 与本地一致，WSS `101`、MQTT retained、超时离线和 390px 布局验证通过。
+- macOS Chrome 已用真实 N16R8 `0.1.2` 验证连续遥测；第二个无 USB 浏览器完成 `rest -> ack -> study -> ack` 远端命令闭环。
+- Windows 页面代码只使用标准 Web Serial API，不依赖 `/dev/cu.*`；真实 Windows + CH340 冒烟测试仍是最终待办，当前不得写成实板通过。
