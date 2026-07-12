@@ -198,4 +198,4 @@ WSS 握手成功，真实 USB 帧可以到达第二客户端
 - 初中 `smartlife-junior-*` 四个服务在部署前后均为 active，未被重启。
 - 公网静态文件 SHA-256 与本地一致，WSS `101`、MQTT retained、超时离线和 390px 布局验证通过。
 - macOS Chrome 已用真实 N16R8 `0.1.2` 验证连续遥测；第二个无 USB 浏览器完成 `rest -> ack -> study -> ack` 远端命令闭环。
-- Windows 页面代码只使用标准 Web Serial API，不依赖 `/dev/cu.*`；真实 Windows + CH340 冒烟测试仍是最终待办，当前不得写成实板通过。
+- Windows 11 Chrome 149 用户代理下，HTTPS、标准 Web Serial API、WSS、真实远端数据和 `1366px` 布局检查通过；真实 Windows + CH340 冒烟测试仍是最终待办，当前不得写成实板通过。
